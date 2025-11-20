@@ -4,7 +4,7 @@ A matrix only language, for a uni project.
 
 ## Examples
 
-```ts
+```julia
 # Comments start with a hash
 
 # A variable declaration and assignment, with inferred type
@@ -47,9 +47,11 @@ let vec = <1 2> # 2D vector (2x1 matrix)
 # Basic operations (follow math rules)
 # Addition (+) is allowed only between the same vector shapes
 # Subtraction (-) is also allowed only between the same vector shapes
-# Matrix multiplication (*) is chosen when none of the operands is a 1x1 matrix, it follows the formula: AxB * BxC = AxC
+# Matrix multiplication (*) is chosen when none of the operands is a 1x1 matrix,
+# it follows the formula: AxB * BxC = AxC
 # Scalar multiplication (*) is chosen when one of the operands is a 1x1 matrix
-# Vector multiplication (*) is chosen when both operands have a single column and the same row count, it results in a dot product
+# Vector multiplication (*) is chosen when both operands have a single column and the same row count,
+# it results in a dot product
 # Vector and matrix multiplication (*) behaves like normal matrix multiplication
 # Powering (^) is allowed only between scalars
 
