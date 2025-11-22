@@ -1,4 +1,4 @@
-# NumaLang
+# MxLang
 
 A matrix only language, for a uni project.
 
@@ -74,4 +74,8 @@ let mat11: 3x3 = ident() # Requires an explicit type declaration
 # Matrix inverse
 let mat12: 2x3 = [1 2 3][4 5 6]
 let mat13 = inv(mat12)
+
+# Printing
+let mat13 = [1 2][3 4]
+print(mat13) # Prints the matrix
 ```

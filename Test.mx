@@ -1,0 +1,7 @@
+let mat = [1 2][3 4]
+let scalar = 5
+
+# Nice
+mat = scalar * mat
+
+print(mat)
