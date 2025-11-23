@@ -37,6 +37,90 @@ typedef struct Token {
 	size_t SourceLine;
 } Token;
 
+// A gemini's data structure but modified:
+// Uses multiple tagged unions in AST nodes
+// For now possible AST node types:
+// - literal: a double because that's what I'll operate on now
+// - blocks: just so I can have multiple lines of code and then later ifs and so (just an array)
+// - unary: negation (no booleans for now) and transposing
+// - grouping: parenthesis to group expressions (just a pointer to another node)
+//
+// Each of them having appropriate pointers with operators, literals, identifiers (tokens) or other AST nodes
+// This can then be displayed and parsed
+
+typedef enum ASTNodeType : uint8_t {
+	Literal,
+	Block,
+	Unary,
+	Grouping,
+	Binary
+} ASTNodeType;
+
+struct ASTNode;
+
+typedef struct ASTNode {
+	ASTNodeType Type;
+
+	union {
+		double Literal;
+
+		struct {
+			struct ASTNode** Nodes;
+			size_t NodeCount;
+		} Block;
+
+		struct {
+			Token* Operator;
+			struct ASTNode* Operand;
+		} Unary;
+
+		struct {
+			struct ASTNode* Node;
+		} Grouping;
+
+		struct {
+			struct ASTNode* Left;
+			Token* Operator;
+			struct ASTNode* Right;
+		} Binary;
+	} Data;
+} ASTNode;
+
+void ASTNodePrint(const ASTNode* node)
+{
+	switch (node->Type) {
+	case Literal:
+		printf("%lf", node->Data.Literal);
+		break;
+	case Block:
+		printf("(block\n");
+		for (size_t i = 0; i < node->Data.Block.NodeCount; ++i) {
+			printf("  ");
+			ASTNodePrint(node->Data.Block.Nodes[i]);
+			printf("\n");
+		}
+		printf(")");
+		break;
+	case Unary:
+		printf("(%s ", node->Data.Unary.Operator->Lexeme);
+		ASTNodePrint(node->Data.Unary.Operand);
+		printf(")");
+		break;
+	case Grouping:
+		printf("(grouping ");
+		ASTNodePrint(node->Data.Grouping.Node);
+		printf(")");
+		break;
+	case Binary:
+		printf("(%s ", node->Data.Binary.Operator->Lexeme);
+		ASTNodePrint(node->Data.Binary.Left);
+		printf(" ");
+		ASTNodePrint(node->Data.Binary.Right);
+		printf(")");
+		break;
+	}
+}
+
 typedef struct Scanner {
 	const char* Source;
 	Token Tokens[1000];
@@ -253,6 +337,58 @@ int main(int argc, char* argv[])
 	}
 
 	free(sourceCode);
+
+	ASTNode* left = malloc(sizeof(ASTNode));
+	left->Type = Unary;
+	left->Data.Unary.Operator = malloc(sizeof(Token));
+	left->Data.Unary.Operator->Number = 0;
+	left->Data.Unary.Operator->SourceLine = 69;
+	left->Data.Unary.Operator->Lexeme = "'";
+	left->Data.Unary.Operator->Type = Apostrophe;
+	left->Data.Unary.Operand = malloc(sizeof(ASTNode));
+	left->Data.Unary.Operand->Type = Grouping;
+	left->Data.Unary.Operand->Data.Grouping.Node = malloc(sizeof(ASTNode));
+	left->Data.Unary.Operand->Data.Grouping.Node->Type = Binary;
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Left = malloc(sizeof(ASTNode));
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Left->Type = Literal;
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Left->Data.Literal = 98;
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Right = malloc(sizeof(ASTNode));
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Right->Type = Literal;
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Right->Data.Literal = 65;
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Operator = malloc(sizeof(Token));
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Operator->Type = Minus;
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Operator->Lexeme = "-";
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Operator->SourceLine = 69;
+	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Operator->Number = 0;
+
+	ASTNode* right = malloc(sizeof(ASTNode));
+	right->Type = Literal;
+	right->Data.Literal = 456;
+
+	ASTNode* node = malloc(sizeof(ASTNode));
+	node->Type = Binary;
+	node->Data.Binary.Left = left;
+	node->Data.Binary.Right = right;
+	node->Data.Binary.Operator = malloc(sizeof(Token));
+	node->Data.Binary.Operator->Type = Plus;
+	node->Data.Binary.Operator->Lexeme = "+";
+	node->Data.Binary.Operator->SourceLine = 69;
+	node->Data.Binary.Operator->Number = 0;
+
+	ASTNode* nodes[3];
+	nodes[0] = malloc(sizeof(ASTNode));
+	nodes[0]->Type = Literal;
+	nodes[0]->Data.Literal = 123;
+	nodes[1] = node;
+	nodes[2] = malloc(sizeof(ASTNode));
+	nodes[2]->Type = Literal;
+	nodes[2]->Data.Literal = 789;
+	ASTNode* block = malloc(sizeof(ASTNode));
+	block->Type = Block;
+	block->Data.Block.NodeCount = 3;
+	block->Data.Block.Nodes = nodes;
+
+	ASTNodePrint(block);
 
 	return 0;
 }
