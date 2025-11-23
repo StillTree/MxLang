@@ -79,3 +79,26 @@ let mat13 = inv(mat12)
 let mat13 = [1 2][3 4]
 print(mat13) # Prints the matrix
 ```
+
+## EBNF
+
+```ebnf
+program      -> statement* EOF
+
+statement    -> var_decl | assignment | expression
+
+var_decl     -> ("let" | "const") IDENTIFIER type_hint? "=" expression
+type_hint    -> ":" INTEGER "x" INTEGER
+
+assignment   -> IDENTIFIER index_suffix? "=" expression
+index_suffix -> "[" expression (expression)? "]"
+
+expression   -> term ( ( "+" | "-") term )*
+term         -> unary ( ( "*" | "/" ) unary )*
+unary        -> "-" unary | factor
+factor       -> postfix ( "^" postfix )*
+postfix      -> call_or_atom ( "'" )*
+
+call_or_atom -> IDENTIFIER ( "(" args? ")" | index_suffix )? | NUMBER | matrix_lit | vector_lit | "(" expression ")"
+args         -> expression ( "," expression )*
+```

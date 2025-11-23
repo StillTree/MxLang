@@ -37,24 +37,7 @@ typedef struct Token {
 	size_t SourceLine;
 } Token;
 
-// A gemini's data structure but modified:
-// Uses multiple tagged unions in AST nodes
-// For now possible AST node types:
-// - literal: a double because that's what I'll operate on now
-// - blocks: just so I can have multiple lines of code and then later ifs and so (just an array)
-// - unary: negation (no booleans for now) and transposing
-// - grouping: parenthesis to group expressions (just a pointer to another node)
-//
-// Each of them having appropriate pointers with operators, literals, identifiers (tokens) or other AST nodes
-// This can then be displayed and parsed
-
-typedef enum ASTNodeType : uint8_t {
-	Literal,
-	Block,
-	Unary,
-	Grouping,
-	Binary
-} ASTNodeType;
+typedef enum ASTNodeType : uint8_t { Literal, Block, Unary, Grouping, Binary } ASTNodeType;
 
 struct ASTNode;
 
@@ -119,6 +102,108 @@ void ASTNodePrint(const ASTNode* node)
 		printf(")");
 		break;
 	}
+}
+
+typedef struct Parser {
+	Token* Tokens;
+	size_t CurrentToken;
+} Parser;
+
+Parser g_parser = { .Tokens = nullptr, .CurrentToken = 0 };
+
+ASTNode* ParsePrimary(Parser* parser);
+ASTNode* ParseUnary(Parser* parser);
+ASTNode* ParseFactor(Parser* parser);
+ASTNode* ParseTerm(Parser* parser);
+
+ASTNode* ParsePrimary(Parser* parser)
+{
+	if (parser->Tokens[parser->CurrentToken].Type == Number) {
+		++parser->CurrentToken;
+
+		ASTNode* result = malloc(sizeof(ASTNode));
+		result->Type = Literal;
+		result->Data.Literal = parser->Tokens[parser->CurrentToken - 1].Number;
+		return result;
+	}
+
+	if (parser->Tokens[parser->CurrentToken].Type == LeftRoundBracket) {
+		++parser->CurrentToken;
+
+		ASTNode* term = ParseTerm(parser);
+		if (parser->Tokens[parser->CurrentToken].Type != RightRoundBracket) {
+			return nullptr;
+		}
+
+		++parser->CurrentToken;
+
+		ASTNode* result = malloc(sizeof(ASTNode));
+		result->Type = Grouping;
+		result->Data.Grouping.Node = term;
+		return result;
+	}
+
+	return nullptr;
+}
+
+ASTNode* ParseUnary(Parser* parser)
+{
+	if (parser->Tokens[parser->CurrentToken].Type == Minus) {
+		++parser->CurrentToken;
+
+		Token* operator = parser->Tokens + parser->CurrentToken - 1;
+		ASTNode* operand = ParseUnary(parser);
+
+		ASTNode* result = malloc(sizeof(ASTNode));
+		result->Type = Unary;
+		result->Data.Unary.Operator = operator;
+		result->Data.Unary.Operand = operand;
+		return result;
+	}
+
+	return ParsePrimary(parser);
+}
+
+ASTNode* ParseFactor(Parser* parser)
+{
+	ASTNode* unary = ParseUnary(parser);
+
+	while (parser->Tokens[parser->CurrentToken].Type == Slash || parser->Tokens[parser->CurrentToken].Type == Star) {
+		++parser->CurrentToken;
+
+		Token* token = parser->Tokens + parser->CurrentToken - 1;
+		ASTNode* right = ParseUnary(parser);
+
+		ASTNode* temp = unary;
+		unary = malloc(sizeof(ASTNode));
+		unary->Type = Binary;
+		unary->Data.Binary.Left = temp;
+		unary->Data.Binary.Operator = token;
+		unary->Data.Binary.Right = right;
+	}
+
+	return unary;
+}
+
+ASTNode* ParseTerm(Parser* parser)
+{
+	ASTNode* factor = ParseFactor(parser);
+
+	while (parser->Tokens[parser->CurrentToken].Type == Plus || parser->Tokens[parser->CurrentToken].Type == Minus) {
+		++parser->CurrentToken;
+
+		Token* token = parser->Tokens + parser->CurrentToken - 1;
+		ASTNode* right = ParseFactor(parser);
+
+		ASTNode* temp = factor;
+		factor = malloc(sizeof(ASTNode));
+		factor->Type = Binary;
+		factor->Data.Binary.Left = temp;
+		factor->Data.Binary.Operator = token;
+		factor->Data.Binary.Right = right;
+	}
+
+	return factor;
 }
 
 typedef struct Scanner {
@@ -338,57 +423,11 @@ int main(int argc, char* argv[])
 
 	free(sourceCode);
 
-	ASTNode* left = malloc(sizeof(ASTNode));
-	left->Type = Unary;
-	left->Data.Unary.Operator = malloc(sizeof(Token));
-	left->Data.Unary.Operator->Number = 0;
-	left->Data.Unary.Operator->SourceLine = 69;
-	left->Data.Unary.Operator->Lexeme = "'";
-	left->Data.Unary.Operator->Type = Apostrophe;
-	left->Data.Unary.Operand = malloc(sizeof(ASTNode));
-	left->Data.Unary.Operand->Type = Grouping;
-	left->Data.Unary.Operand->Data.Grouping.Node = malloc(sizeof(ASTNode));
-	left->Data.Unary.Operand->Data.Grouping.Node->Type = Binary;
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Left = malloc(sizeof(ASTNode));
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Left->Type = Literal;
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Left->Data.Literal = 98;
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Right = malloc(sizeof(ASTNode));
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Right->Type = Literal;
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Right->Data.Literal = 65;
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Operator = malloc(sizeof(Token));
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Operator->Type = Minus;
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Operator->Lexeme = "-";
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Operator->SourceLine = 69;
-	left->Data.Unary.Operand->Data.Grouping.Node->Data.Binary.Operator->Number = 0;
+	g_parser.Tokens = g_scanner.Tokens;
 
-	ASTNode* right = malloc(sizeof(ASTNode));
-	right->Type = Literal;
-	right->Data.Literal = 456;
+	ASTNode* term = ParseTerm(&g_parser);
 
-	ASTNode* node = malloc(sizeof(ASTNode));
-	node->Type = Binary;
-	node->Data.Binary.Left = left;
-	node->Data.Binary.Right = right;
-	node->Data.Binary.Operator = malloc(sizeof(Token));
-	node->Data.Binary.Operator->Type = Plus;
-	node->Data.Binary.Operator->Lexeme = "+";
-	node->Data.Binary.Operator->SourceLine = 69;
-	node->Data.Binary.Operator->Number = 0;
-
-	ASTNode* nodes[3];
-	nodes[0] = malloc(sizeof(ASTNode));
-	nodes[0]->Type = Literal;
-	nodes[0]->Data.Literal = 123;
-	nodes[1] = node;
-	nodes[2] = malloc(sizeof(ASTNode));
-	nodes[2]->Type = Literal;
-	nodes[2]->Data.Literal = 789;
-	ASTNode* block = malloc(sizeof(ASTNode));
-	block->Type = Block;
-	block->Data.Block.NodeCount = 3;
-	block->Data.Block.Nodes = nodes;
-
-	ASTNodePrint(block);
+	ASTNodePrint(term);
 
 	return 0;
 }
