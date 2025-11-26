@@ -38,13 +38,11 @@ let v = <1 1>
 let k = 0
 
 while k < 5 {
-    // A * v
     let x1 = A[1][1] * v[1] + A[1][2] * v[2]
     let x2 = A[2][1] * v[1] + A[2][2] * v[2]
 
     v = <x1 x2>
 
-    // norm = sqrt(v[1]^2 + v[2]^2)
     let n = (v[1]*v[1] + v[2]*v[2]) ^ 0.5
 
     if n > 0 {
