@@ -4,101 +4,124 @@ A matrix only language, for a uni project.
 
 ## Examples
 
+Here are some example programs written in Mx.
+
+> [!NOTE]  
+> These examples are fully written by AI, I gave it Mx's EBNF grammar definitions and it spat out these. I did not check them personally!
+
+### Row normalization of a 3×3 matrix
+
 ```julia
-# Comments start with a hash
+let M: 3x3 = [1 2 3][4 5 6][7 8 9]
+let i = 1
 
-# A variable declaration and assignment, with inferred type
-let mat1 = [1 2][3 4]
-# Equivalent to
-let mat1: 2x2 = [1 2][3 4]
+while i <= 3 {
+    let s = M[i][1] + M[i][2] + M[i][3]
 
-# A constant
-const mat2 = [1 2][3 4]
-# Equivalent to
-const mat2: 2x2 = [1 2][3 4]
+    if s != 0 {
+        M[i][1] = M[i][1] / s
+        M[i][2] = M[i][2] / s
+        M[i][3] = M[i][3] / s
+    }
 
-# Shape changes are not allowed
-let mat3 = [1 2][3 4]
-mat3 = [1 2 3][4 5 6][7 8 9] # Error
+    i = i + 1
+}
 
-# Value changes or reasignments are, indexes are 1-based
-mat3[1 2] = 5 # Allowed
-mat3 = [5 6][7 8] # Allowed
-# Entire rows can also be swapped
-mat3[2] = [9 10] # Allowed
+display(M)
+```
 
-# By default everything is zeroed out, unless defined
-let mat4: 2x2 = [1 2] # Silently becomes: [1 2][0 0]
-# This only works with explicit type declarations
-let mat5 = [1 2] # Becomes a 1x2, nothing gets zeroed out
+### Power iteration–style vector normalization
 
-# Scalars are matrices too (1x1)
-let scalar = 123 # Inferred as 1x1
-# Equivalent to
-let scalar = [123] # Also inferred as 1x1
-# Equivalent to
-let scalar = <123> # Also inferred as 1x1
+```julia
+let A: 2x2 = [3 1][2 4]
+let v = <1 1>
+let k = 0
 
-# Vectors are just matrices with a single column
-let vec = [1][2] # 2D vector (2x1 matrix)
-# Equivalent to
-let vec = <1 2> # 2D vector (2x1 matrix)
+while k < 5 {
+    // A * v
+    let x1 = A[1][1] * v[1] + A[1][2] * v[2]
+    let x2 = A[2][1] * v[1] + A[2][2] * v[2]
 
-# Basic operations (follow math rules)
-# Addition (+) is allowed only between the same vector shapes
-# Subtraction (-) is also allowed only between the same vector shapes
-# Matrix multiplication (*) is chosen when none of the operands is a 1x1 matrix,
-# it follows the formula: AxB * BxC = AxC
-# Scalar multiplication (*) is chosen when one of the operands is a 1x1 matrix
-# Vector multiplication (*) is chosen when both operands have a single column and the same row count,
-# it results in a dot product
-# Vector and matrix multiplication (*) behaves like normal matrix multiplication
-# Powering (^) is allowed only between scalars
+    v = <x1 x2>
 
-# Adjacency does not means multiplication
-let mat6 = [1 2][3 4]
-let mat7 = [5 6][7 8]
-let mat8 = mat6mat7 # Error
+    // norm = sqrt(v[1]^2 + v[2]^2)
+    let n = (v[1]*v[1] + v[2]*v[2]) ^ 0.5
 
-# Transpose
-let mat9 = [1 2][3 4]
-let transposed = mat6' # Results in a 2x2
+    if n > 0 {
+        v[1] = v[1] / n
+        v[2] = v[2] / n
+    }
 
-# Determinant
-let mat10 = [1 2][3 4]
-let determinant = det(mat7) # Results in a scalar (1x1)
+    k = k + 1
+}
 
-# Identity matrix
-let mat11: 3x3 = ident() # Requires an explicit type declaration
+display(v)
+```
 
-# Matrix inverse
-let mat12: 2x3 = [1 2 3][4 5 6]
-let mat13 = inv(mat12)
+### Diagonal extraction, sum, and transpose
 
-# Printing
-let mat13 = [1 2][3 4]
-print(mat13) # Prints the matrix
+```julia
+let A: 3x3 = [5 1 2][3 9 4][6 7 8]
+let diag = <0 0 0>
+let i = 1
+
+while i <= 3 {
+    diag[i] = A[i][i]
+    i = i + 1
+}
+
+let s = diag[1] + diag[2] + diag[3]
+
+if s > 15 {
+    let v = <s 1 1>
+    display(v')
+} else {
+    display(diag')
+}
 ```
 
 ## EBNF
 
 ```ebnf
-program      -> statement* EOF
+program      ::= statement* EOF
 
-statement    -> var_decl | assignment | expression
+statement    ::= var_decl
+               | assignment
+               | if_stmt
+               | while_stmt
+               | block
+               | expression
 
-var_decl     -> ("let" | "const") IDENTIFIER type_hint? "=" expression
-type_hint    -> ":" INTEGER "x" INTEGER
+block        ::= "{" statement* "}"
 
-assignment   -> IDENTIFIER index_suffix? "=" expression
-index_suffix -> "[" expression (expression)? "]"
+if_stmt      ::= "if" expression block ( "else" ( if_stmt | block ) )?
+while_stmt   ::= "while" expression block
 
-expression   -> term ( ( "+" | "-") term )*
-term         -> unary ( ( "*" | "/" ) unary )*
-unary        -> "-" unary | factor
-factor       -> postfix ( "^" postfix )*
-postfix      -> call_or_atom ( "'" )*
+var_decl     ::= ( "let" | "const" ) IDENTIFIER type_decl? "=" expression
+type_decl    ::= ":" INTEGER "x" INTEGER
 
-call_or_atom -> IDENTIFIER ( "(" args? ")" | index_suffix )? | NUMBER | matrix_lit | vector_lit | "(" expression ")"
-args         -> expression ( "," expression )*
+assignment   ::= IDENTIFIER index_suffix? "=" expression
+index_suffix ::= "[" expression ( expression )? "]"
+
+matrix_lit   ::= row_lit ( row_lit )*
+row_lit      ::= "[" expression+ "]"
+vector_lit   ::= "<" expression+ ">"
+
+expression   ::= logic_and ( "or" logic_and )*
+logic_and    ::= equality ( "and" equality )*
+equality     ::= comparison ( ( "==" | "!=" ) comparison )?
+comparison   ::= term ( ( "<" | "<=" | ">" | ">=" ) term )?
+term         ::= factor ( ( "+" | "-") factor )*
+factor       ::= exponent ( ( "*" | "/" ) exponent )*
+exponent     ::= unary ( "^" unary )?
+unary        ::= ( "-" unary ) | postfix
+postfix      ::= primary ( "'" )?
+
+primary      ::= IDENTIFIER ( "(" call_args? ")" | index_suffix )? 
+               | NUMBER 
+               | matrix_lit 
+               | vector_lit 
+               | "(" expression ")"
+
+call_args    ::= expression ( "," expression )*
 ```
