@@ -60,7 +60,8 @@ typedef enum ASTNodeType : uint8_t {
 	IfStmt,
 	IndexSuffix,
 	Assignment,
-	Identifier
+	Identifier,
+	Number
 } ASTNodeType;
 
 struct ASTNode;
@@ -69,7 +70,13 @@ typedef struct ASTNode {
 	ASTNodeType Type;
 
 	union {
-		double Literal;
+		double Number;
+
+		struct {
+			struct ASTNode** Matrix;
+			size_t Height;
+			size_t Width;
+		} Literal;
 
 		struct {
 			struct ASTNode** Nodes;
@@ -122,15 +129,32 @@ typedef struct ASTNode {
 			struct ASTNode* Expression;
 		} Assignment;
 
-		Token* Identifier;
+		struct {
+			Token* Identifier;
+			// Nullable
+			struct ASTNode* Index;
+		} Identifier;
 	} Data;
 } ASTNode;
 
 void ASTNodePrint(const ASTNode* node)
 {
 	switch (node->Type) {
+	case Number:
+		printf("%lf", node->Data.Number);
+		break;
 	case Literal:
-		printf("%lf", node->Data.Literal);
+		printf("(lit ");
+		for (size_t i = 0; i < node->Data.Literal.Height; ++i) {
+			for (size_t j = 0; j < node->Data.Literal.Width; ++j) {
+				ASTNodePrint(node->Data.Literal.Matrix[(i * node->Data.Literal.Width) + j]);
+
+				if (j < node->Data.Literal.Width - 1) {
+					printf(" ");
+				}
+			}
+		}
+		printf(")");
 		break;
 	case Block:
 		printf("(block\n");
@@ -142,7 +166,7 @@ void ASTNodePrint(const ASTNode* node)
 		printf(")");
 		break;
 	case Unary:
-		printf("(%s ", node->Data.Unary.Operator->Lexeme);
+		printf("(un%s ", node->Data.Unary.Operator->Lexeme);
 		ASTNodePrint(node->Data.Unary.Operand);
 		printf(")");
 		break;
@@ -152,7 +176,7 @@ void ASTNodePrint(const ASTNode* node)
 		printf(")");
 		break;
 	case Binary:
-		printf("(%s ", node->Data.Binary.Operator->Lexeme);
+		printf("(bin%s ", node->Data.Binary.Operator->Lexeme);
 		ASTNodePrint(node->Data.Binary.Left);
 		printf(" ");
 		ASTNodePrint(node->Data.Binary.Right);
@@ -191,12 +215,14 @@ void ASTNodePrint(const ASTNode* node)
 	case IndexSuffix:
 		printf("(index ");
 		ASTNodePrint(node->Data.IndexSuffix.I);
-		printf(" ");
-		ASTNodePrint(node->Data.IndexSuffix.J);
+		if (node->Data.IndexSuffix.J) {
+			printf(" ");
+			ASTNodePrint(node->Data.IndexSuffix.J);
+		}
 		printf(")");
 		break;
 	case Assignment:
-		printf("(assignment %s", node->Data.Assignment.Identifier->Lexeme);
+		printf("(assignment %s ", node->Data.Assignment.Identifier->Lexeme);
 		if (node->Data.Assignment.Index) {
 			ASTNodePrint(node->Data.Assignment.Index);
 		}
@@ -205,7 +231,10 @@ void ASTNodePrint(const ASTNode* node)
 		printf(")");
 		break;
 	case Identifier:
-		printf("(ident %s", node->Data.Identifier->Lexeme);
+		printf("(ident %s ", node->Data.Identifier.Identifier->Lexeme);
+		if (node->Data.Identifier.Index) {
+			ASTNodePrint(node->Data.Identifier.Index);
+		}
 		printf(")");
 		break;
 	}
@@ -434,7 +463,7 @@ ASTNode* ParseExpression(Parser* parser)
 	ASTNode* left = ParseLogicAnd(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenOr) {
-		Token* operator = parser->Tokens + parser->CurrentToken;
+		Token* operator= parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -454,7 +483,7 @@ ASTNode* ParseLogicAnd(Parser* parser)
 	ASTNode* left = ParseEquality(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenAnd) {
-		Token* operator = parser->Tokens + parser->CurrentToken;
+		Token* operator= parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -474,7 +503,7 @@ ASTNode* ParseEquality(Parser* parser)
 	ASTNode* left = ParseComparison(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenEqualEqual || parser->Tokens[parser->CurrentToken].Type == TokenNotEqual) {
-		Token* operator = parser->Tokens + parser->CurrentToken;
+		Token* operator= parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -495,7 +524,7 @@ ASTNode* ParseComparison(Parser* parser)
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenLess || parser->Tokens[parser->CurrentToken].Type == TokenLessEqual
 		|| parser->Tokens[parser->CurrentToken].Type == TokenGreater || parser->Tokens[parser->CurrentToken].Type == TokenGreaterEqual) {
-		Token* operator = parser->Tokens + parser->CurrentToken;
+		Token* operator= parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -515,7 +544,7 @@ ASTNode* ParseTerm(Parser* parser)
 	ASTNode* left = ParseFactor(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenPlus || parser->Tokens[parser->CurrentToken].Type == TokenMinus) {
-		Token* operator = parser->Tokens + parser->CurrentToken;
+		Token* operator= parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -535,7 +564,7 @@ ASTNode* ParseFactor(Parser* parser)
 	ASTNode* left = ParseExponent(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenStar || parser->Tokens[parser->CurrentToken].Type == TokenSlash) {
-		Token* operator = parser->Tokens + parser->CurrentToken;
+		Token* operator= parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -555,7 +584,7 @@ ASTNode* ParseExponent(Parser* parser)
 	ASTNode* left = ParseUnary(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenUpArrow) {
-		Token* operator = parser->Tokens + parser->CurrentToken;
+		Token* operator= parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -573,7 +602,7 @@ ASTNode* ParseExponent(Parser* parser)
 ASTNode* ParseUnary(Parser* parser)
 {
 	if (parser->Tokens[parser->CurrentToken].Type == TokenMinus) {
-		Token* operator = parser->Tokens + parser->CurrentToken;
+		Token* operator= parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* operand = ParseUnary(parser);
@@ -593,7 +622,7 @@ ASTNode* ParsePostfix(Parser* parser)
 	ASTNode* primary = ParsePrimary(parser);
 
 	if (parser->Tokens[parser->CurrentToken].Type == TokenApostrophe) {
-		Token* operator = parser->Tokens + parser->CurrentToken;
+		Token* operator= parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* postfix = malloc(sizeof(ASTNode));
@@ -611,7 +640,12 @@ ASTNode* ParsePrimary(Parser* parser)
 	if (ParserMatch(parser, TokenNumber)) {
 		ASTNode* number = malloc(sizeof(ASTNode));
 		number->Type = Literal;
-		number->Data.Literal = parser->Tokens[parser->CurrentToken - 1].Number;
+		number->Data.Literal.Matrix = (ASTNode**)malloc(sizeof(ASTNode*));
+		number->Data.Literal.Matrix[0] = malloc(sizeof(ASTNode));
+		number->Data.Literal.Matrix[0]->Type = Number;
+		number->Data.Literal.Matrix[0]->Data.Number = parser->Tokens[parser->CurrentToken - 1].Number;
+		number->Data.Literal.Width = 1;
+		number->Data.Literal.Height = 1;
 
 		return number;
 	}
@@ -639,9 +673,28 @@ ASTNode* ParsePrimary(Parser* parser)
 	}
 
 	if (parser->Tokens[parser->CurrentToken].Type == TokenLeftVectorBracket) {
-		// TODO: Implement vector literals
-		printf("Unimplemented!!\n");
-		return nullptr;
+		ParserAdvance(parser);
+
+		ASTNode* vectorLit = malloc(sizeof(ASTNode));
+		vectorLit->Type = Literal;
+		vectorLit->Data.Literal.Width = 1;
+		vectorLit->Data.Literal.Matrix = (ASTNode**)malloc(8 * sizeof(ASTNode*));
+
+		if (ParserMatch(parser, TokenRightVectorBracket)) {
+			printf("Empty vector literals not allowed\n");
+		}
+
+		size_t i = 0;
+		while (parser->Tokens[parser->CurrentToken].Type != TokenRightVectorBracket) {
+			vectorLit->Data.Literal.Matrix[i] = ParseExpression(parser);
+			++i;
+		}
+
+		ParserExpect(parser, TokenRightVectorBracket);
+
+		vectorLit->Data.Literal.Height = i;
+
+		return vectorLit;
 	}
 
 	printf("Unexpected token %s in primary\n", parser->Tokens[parser->CurrentToken].Lexeme);
@@ -653,21 +706,34 @@ ASTNode* ParseIdentifierPrimary(Parser* parser)
 	Token* identifier = parser->Tokens + parser->CurrentToken;
 	ParserAdvance(parser);
 
+	// A function call
 	if (ParserMatch(parser, TokenLeftRoundBracket)) {
 		// TODO: Implement function calls
 		printf("Unimplemented!!\n");
 		return nullptr;
 	}
 
+	// Not a function call
+	ASTNode* indexSuffix = nullptr;
 	if (ParserMatch(parser, TokenLeftSquareBracket)) {
-		// TODO: Implement indexing
-		printf("Unimplemented!!\n");
-		return nullptr;
+		ASTNode* i = ParseExpression(parser);
+		ASTNode* j = nullptr;
+
+		if (parser->Tokens[parser->CurrentToken].Type != TokenRightSquareBracket) {
+			j = ParseExpression(parser);
+		}
+
+		ParserExpect(parser, TokenRightSquareBracket);
+		indexSuffix = malloc(sizeof(ASTNode));
+		indexSuffix->Type = IndexSuffix;
+		indexSuffix->Data.IndexSuffix.I = i;
+		indexSuffix->Data.IndexSuffix.J = j;
 	}
 
 	ASTNode* astIdentifier = malloc(sizeof(ASTNode));
 	astIdentifier->Type = Identifier;
-	astIdentifier->Data.Identifier = identifier;
+	astIdentifier->Data.Identifier.Identifier = identifier;
+	astIdentifier->Data.Identifier.Index = indexSuffix;
 
 	return astIdentifier;
 }
@@ -724,22 +790,22 @@ void Scan()
 			break;
 		case '<':
 			if (g_scanner.Source[g_scanner.LexemeCurrent] == '=') {
+				++g_scanner.LexemeCurrent;
 				ScannerAddToken(TokenLessEqual, 0);
-				++g_scanner.LexemeCurrent;
 			} else if (g_scanner.Source[g_scanner.LexemeCurrent] == '<') {
-				ScannerAddToken(TokenLeftVectorBracket, 0);
 				++g_scanner.LexemeCurrent;
+				ScannerAddToken(TokenLeftVectorBracket, 0);
 			} else {
 				ScannerAddToken(TokenLess, 0);
 			}
 			break;
 		case '>':
 			if (g_scanner.Source[g_scanner.LexemeCurrent] == '=') {
+				++g_scanner.LexemeCurrent;
 				ScannerAddToken(TokenGreaterEqual, 0);
-				++g_scanner.LexemeCurrent;
 			} else if (g_scanner.Source[g_scanner.LexemeCurrent] == '>') {
-				ScannerAddToken(TokenRightVectorBracket, 0);
 				++g_scanner.LexemeCurrent;
+				ScannerAddToken(TokenRightVectorBracket, 0);
 			} else {
 				ScannerAddToken(TokenGreater, 0);
 			}
@@ -833,8 +899,8 @@ void Scan()
 			break;
 		case '=':
 			if (g_scanner.Source[g_scanner.LexemeCurrent] == '=') {
-				ScannerAddToken(TokenEqualEqual, 0);
 				++g_scanner.LexemeCurrent;
+				ScannerAddToken(TokenEqualEqual, 0);
 			} else {
 				ScannerAddToken(TokenEqual, 0);
 			}
