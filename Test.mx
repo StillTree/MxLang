@@ -1,1 +1,10 @@
-(2 + 2) * -2
+let abc: 2x2 = 123
+
+let i = 0
+while i < 10 {
+	abc[1 2] = abc + i
+
+	i = i + 1
+}
+
+let i = 0

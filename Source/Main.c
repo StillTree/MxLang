@@ -5,29 +5,41 @@
 #include <string.h>
 
 typedef enum TokenType : uint8_t {
-	LeftRoundBracket,
-	RightRoundBracket,
-	LeftSquareBracket,
-	RightSquareBracket,
-	LeftAngleBracket,
-	RightAngleBracket,
-	Comma,
-	Plus,
-	Minus,
-	Star,
-	Slash,
-	UpArrow,
-	Apostrophe,
-	Colon,
-	Equal,
-	Identifier,
-	Number,
-	Let,
-	Const,
-	Det,
-	Ident,
-	Inv,
-	Eof
+	TokenLeftRoundBracket,
+	TokenRightRoundBracket,
+	TokenLeftSquareBracket,
+	TokenRightSquareBracket,
+	TokenLeftVectorBracket,
+	TokenRightVectorBracket,
+	TokenLeftCurlyBracket,
+	TokenRightCurlyBracket,
+	TokenComma,
+	TokenPlus,
+	TokenMinus,
+	TokenStar,
+	TokenSlash,
+	TokenUpArrow,
+	TokenApostrophe,
+	TokenColon,
+	TokenMatrixShape,
+	TokenSemicolon,
+	TokenEqual,
+	TokenIdentifier,
+	TokenNumber,
+	TokenLet,
+	TokenConst,
+	TokenIf,
+	TokenElse,
+	TokenWhile,
+	TokenOr,
+	TokenAnd,
+	TokenEqualEqual,
+	TokenNotEqual,
+	TokenLess,
+	TokenLessEqual,
+	TokenGreater,
+	TokenGreaterEqual,
+	TokenEof
 } TokenType;
 
 typedef struct Token {
@@ -37,7 +49,19 @@ typedef struct Token {
 	size_t SourceLine;
 } Token;
 
-typedef enum ASTNodeType : uint8_t { Literal, Block, Unary, Grouping, Binary } ASTNodeType;
+typedef enum ASTNodeType : uint8_t {
+	Literal,
+	Block,
+	Unary,
+	Grouping,
+	Binary,
+	VarDecl,
+	WhileStmt,
+	IfStmt,
+	IndexSuffix,
+	Assignment,
+	Identifier
+} ASTNodeType;
 
 struct ASTNode;
 
@@ -66,6 +90,39 @@ typedef struct ASTNode {
 			Token* Operator;
 			struct ASTNode* Right;
 		} Binary;
+
+		struct {
+			Token* Identifier;
+			// Nullable
+			Token* Type;
+			// Nullable
+			struct ASTNode* Expression;
+			bool IsConst;
+		} VarDecl;
+
+		struct {
+			struct ASTNode* Condition;
+			struct ASTNode* Body;
+		} WhileStmt;
+
+		struct {
+			struct ASTNode* Condition;
+			struct ASTNode* ThenBlock;
+			struct ASTNode* ElseBlock;
+		} IfStmt;
+
+		struct {
+			struct ASTNode* I;
+			struct ASTNode* J;
+		} IndexSuffix;
+
+		struct {
+			Token* Identifier;
+			struct ASTNode* Index;
+			struct ASTNode* Expression;
+		} Assignment;
+
+		Token* Identifier;
 	} Data;
 } ASTNode;
 
@@ -101,6 +158,56 @@ void ASTNodePrint(const ASTNode* node)
 		ASTNodePrint(node->Data.Binary.Right);
 		printf(")");
 		break;
+	case VarDecl:
+		if (node->Data.VarDecl.IsConst) {
+			printf("(const ");
+		} else {
+			printf("(let ");
+		}
+		printf("%s", node->Data.VarDecl.Identifier->Lexeme);
+		if (node->Data.VarDecl.Type) {
+			printf(": %s", node->Data.VarDecl.Type->Lexeme);
+		}
+		printf(" = ");
+		ASTNodePrint(node->Data.VarDecl.Expression);
+		printf(")");
+		break;
+	case WhileStmt:
+		printf("(while ");
+		ASTNodePrint(node->Data.WhileStmt.Condition);
+		printf(" ");
+		ASTNodePrint(node->Data.WhileStmt.Body);
+		printf(" )");
+		break;
+	case IfStmt:
+		printf("(if ");
+		ASTNodePrint(node->Data.IfStmt.Condition);
+		printf(" then ");
+		ASTNodePrint(node->Data.IfStmt.ThenBlock);
+		printf(" else ");
+		ASTNodePrint(node->Data.IfStmt.ElseBlock);
+		printf(" )");
+		break;
+	case IndexSuffix:
+		printf("(index ");
+		ASTNodePrint(node->Data.IndexSuffix.I);
+		printf(" ");
+		ASTNodePrint(node->Data.IndexSuffix.J);
+		printf(")");
+		break;
+	case Assignment:
+		printf("(assignment %s", node->Data.Assignment.Identifier->Lexeme);
+		if (node->Data.Assignment.Index) {
+			ASTNodePrint(node->Data.Assignment.Index);
+		}
+		printf(" ");
+		ASTNodePrint(node->Data.Assignment.Expression);
+		printf(")");
+		break;
+	case Identifier:
+		printf("(ident %s", node->Data.Identifier->Lexeme);
+		printf(")");
+		break;
 	}
 }
 
@@ -111,47 +218,363 @@ typedef struct Parser {
 
 Parser g_parser = { .Tokens = nullptr, .CurrentToken = 0 };
 
-ASTNode* ParsePrimary(Parser* parser);
-ASTNode* ParseUnary(Parser* parser);
-ASTNode* ParseFactor(Parser* parser);
-ASTNode* ParseTerm(Parser* parser);
+void ParserAdvance(Parser* parser) { parser->CurrentToken++; }
 
-ASTNode* ParsePrimary(Parser* parser)
+bool ParserMatch(Parser* parser, TokenType type)
 {
-	if (parser->Tokens[parser->CurrentToken].Type == Number) {
-		++parser->CurrentToken;
-
-		ASTNode* result = malloc(sizeof(ASTNode));
-		result->Type = Literal;
-		result->Data.Literal = parser->Tokens[parser->CurrentToken - 1].Number;
-		return result;
+	if (parser->Tokens[parser->CurrentToken].Type == type) {
+		ParserAdvance(parser);
+		return true;
 	}
 
-	if (parser->Tokens[parser->CurrentToken].Type == LeftRoundBracket) {
-		++parser->CurrentToken;
+	return false;
+}
 
-		ASTNode* term = ParseTerm(parser);
-		if (parser->Tokens[parser->CurrentToken].Type != RightRoundBracket) {
-			return nullptr;
+void ParserExpect(Parser* parser, TokenType type)
+{
+	if (parser->Tokens[parser->CurrentToken].Type != type) {
+		printf("Error: Expected token %u but got %u", type, parser->Tokens[parser->CurrentToken].Type);
+	}
+
+	ParserAdvance(parser);
+}
+
+ASTNode* ParseStatement(Parser* parser);
+ASTNode* ParseBlock(Parser* parser);
+ASTNode* ParseVarDecl(Parser* parser);
+ASTNode* ParseWhileStmt(Parser* parser);
+ASTNode* ParseIfStmt(Parser* parser);
+ASTNode* ParseExpressionOrAssignment(Parser* parser);
+ASTNode* ParseExpression(Parser* parser);
+ASTNode* ParseLogicAnd(Parser* parser);
+ASTNode* ParseEquality(Parser* parser);
+ASTNode* ParseComparison(Parser* parser);
+ASTNode* ParseTerm(Parser* parser);
+ASTNode* ParseFactor(Parser* parser);
+ASTNode* ParseExponent(Parser* parser);
+ASTNode* ParseUnary(Parser* parser);
+ASTNode* ParsePostfix(Parser* parser);
+ASTNode* ParsePrimary(Parser* parser);
+ASTNode* ParseIdentifierPrimary(Parser* parser);
+
+ASTNode* ParseProgram(Parser* parser)
+{
+	ASTNode* topLevelBlock = malloc(sizeof(ASTNode));
+	topLevelBlock->Type = Block;
+	topLevelBlock->Data.Block.Nodes = (ASTNode**)malloc(64 * sizeof(ASTNode*));
+
+	size_t i = 0;
+	while (parser->Tokens[parser->CurrentToken].Type != TokenEof) {
+		ASTNode* statement = ParseStatement(parser);
+		topLevelBlock->Data.Block.Nodes[i] = statement;
+
+		++i;
+	}
+
+	topLevelBlock->Data.Block.NodeCount = i;
+
+	return topLevelBlock;
+}
+
+// TODO: Implement mandatoy semicolons
+ASTNode* ParseStatement(Parser* parser)
+{
+	switch (parser->Tokens[parser->CurrentToken].Type) {
+	case TokenLet:
+	case TokenConst:
+		return ParseVarDecl(parser);
+	case TokenIf:
+		return ParseIfStmt(parser);
+	case TokenWhile:
+		return ParseWhileStmt(parser);
+	case TokenLeftCurlyBracket:
+		return ParseBlock(parser);
+
+	default:
+		return ParseExpressionOrAssignment(parser);
+	}
+}
+
+ASTNode* ParseBlock(Parser* parser)
+{
+	ParserExpect(parser, TokenLeftCurlyBracket);
+
+	ASTNode* block = malloc(sizeof(ASTNode));
+	block->Type = Block;
+	block->Data.Block.Nodes = (ASTNode**)malloc(64 * sizeof(ASTNode*));
+
+	size_t i = 0;
+	while (parser->Tokens[parser->CurrentToken].Type != TokenRightCurlyBracket) {
+		ASTNode* statement = ParseStatement(parser);
+		block->Data.Block.Nodes[i] = statement;
+
+		++i;
+	}
+
+	ParserExpect(parser, TokenRightCurlyBracket);
+	block->Data.Block.NodeCount = i;
+
+	return block;
+}
+
+ASTNode* ParseVarDecl(Parser* parser)
+{
+	bool isConst = parser->Tokens[parser->CurrentToken].Type == TokenConst;
+	ParserAdvance(parser);
+
+	Token* identifier = parser->Tokens + parser->CurrentToken;
+	ParserExpect(parser, TokenIdentifier);
+
+	ASTNode* varDecl = malloc(sizeof(ASTNode));
+	varDecl->Type = VarDecl;
+	varDecl->Data.VarDecl.IsConst = isConst;
+	varDecl->Data.VarDecl.Type = nullptr;
+	varDecl->Data.VarDecl.Identifier = identifier;
+
+	if (ParserMatch(parser, TokenColon)) {
+		Token* type = parser->Tokens + parser->CurrentToken;
+		ParserExpect(parser, TokenMatrixShape);
+		varDecl->Data.VarDecl.Type = type;
+	}
+
+	ParserExpect(parser, TokenEqual);
+
+	ASTNode* expression = ParseExpression(parser);
+	varDecl->Data.VarDecl.Expression = expression;
+
+	return varDecl;
+}
+
+ASTNode* ParseWhileStmt(Parser* parser)
+{
+	ParserExpect(parser, TokenWhile);
+
+	ASTNode* condition = ParseExpression(parser);
+	ASTNode* body = ParseBlock(parser);
+
+	ASTNode* whileStmt = malloc(sizeof(ASTNode));
+	whileStmt->Type = WhileStmt;
+	whileStmt->Data.WhileStmt.Body = body;
+	whileStmt->Data.WhileStmt.Condition = condition;
+
+	return whileStmt;
+}
+
+ASTNode* ParseIfStmt(Parser* parser)
+{
+	ParserExpect(parser, TokenIf);
+
+	ASTNode* condition = ParseExpression(parser);
+	ASTNode* thenBlock = ParseBlock(parser);
+
+	ASTNode* elseBlock = nullptr;
+	if (ParserMatch(parser, TokenElse)) {
+		if (parser->Tokens[parser->CurrentToken].Type == TokenIf) {
+			elseBlock = ParseIfStmt(parser);
+		} else {
+			elseBlock = ParseBlock(parser);
+		}
+	}
+
+	ASTNode* ifStmt = malloc(sizeof(ASTNode));
+	ifStmt->Type = IfStmt;
+	ifStmt->Data.IfStmt.Condition = condition;
+	ifStmt->Data.IfStmt.ThenBlock = thenBlock;
+	ifStmt->Data.IfStmt.ElseBlock = elseBlock;
+
+	return ifStmt;
+}
+
+ASTNode* ParseExpressionOrAssignment(Parser* parser)
+{
+	if (parser->Tokens[parser->CurrentToken].Type == TokenIdentifier) {
+		Token* identifier = parser->Tokens + parser->CurrentToken;
+
+		Parser backup = *parser;
+
+		ParserAdvance(parser);
+
+		ASTNode* indexSuffix = nullptr;
+		if (ParserMatch(parser, TokenLeftSquareBracket)) {
+			ASTNode* i = ParseExpression(parser);
+			ASTNode* j = nullptr;
+
+			if (parser->Tokens[parser->CurrentToken].Type != TokenRightSquareBracket) {
+				j = ParseExpression(parser);
+			}
+
+			ParserExpect(parser, TokenRightSquareBracket);
+			indexSuffix = malloc(sizeof(ASTNode));
+			indexSuffix->Type = IndexSuffix;
+			indexSuffix->Data.IndexSuffix.I = i;
+			indexSuffix->Data.IndexSuffix.J = j;
 		}
 
-		++parser->CurrentToken;
+		// This is an assignment
+		if (ParserMatch(parser, TokenEqual)) {
+			ASTNode* assignment = malloc(sizeof(ASTNode));
+			assignment->Type = Assignment;
+			assignment->Data.Assignment.Identifier = identifier;
+			assignment->Data.Assignment.Index = indexSuffix;
+			assignment->Data.Assignment.Expression = ParseExpression(parser);
 
-		ASTNode* result = malloc(sizeof(ASTNode));
-		result->Type = Grouping;
-		result->Data.Grouping.Node = term;
-		return result;
+			return assignment;
+		}
+
+		// Not an assignment
+		*parser = backup;
 	}
 
-	return nullptr;
+	return ParseExpression(parser);
+}
+
+ASTNode* ParseExpression(Parser* parser)
+{
+	ASTNode* left = ParseLogicAnd(parser);
+
+	while (parser->Tokens[parser->CurrentToken].Type == TokenOr) {
+		Token* operator = parser->Tokens + parser->CurrentToken;
+		ParserAdvance(parser);
+
+		ASTNode* temp = left;
+		ASTNode* right = ParseLogicAnd(parser);
+		left = malloc(sizeof(ASTNode));
+		left->Type = Binary;
+		left->Data.Binary.Left = temp;
+		left->Data.Binary.Operator = operator;
+		left->Data.Binary.Right = right;
+	}
+
+	return left;
+}
+
+ASTNode* ParseLogicAnd(Parser* parser)
+{
+	ASTNode* left = ParseEquality(parser);
+
+	while (parser->Tokens[parser->CurrentToken].Type == TokenAnd) {
+		Token* operator = parser->Tokens + parser->CurrentToken;
+		ParserAdvance(parser);
+
+		ASTNode* temp = left;
+		ASTNode* right = ParseEquality(parser);
+		left = malloc(sizeof(ASTNode));
+		left->Type = Binary;
+		left->Data.Binary.Left = temp;
+		left->Data.Binary.Operator = operator;
+		left->Data.Binary.Right = right;
+	}
+
+	return left;
+}
+
+ASTNode* ParseEquality(Parser* parser)
+{
+	ASTNode* left = ParseComparison(parser);
+
+	while (parser->Tokens[parser->CurrentToken].Type == TokenEqualEqual || parser->Tokens[parser->CurrentToken].Type == TokenNotEqual) {
+		Token* operator = parser->Tokens + parser->CurrentToken;
+		ParserAdvance(parser);
+
+		ASTNode* temp = left;
+		ASTNode* right = ParseComparison(parser);
+		left = malloc(sizeof(ASTNode));
+		left->Type = Binary;
+		left->Data.Binary.Left = temp;
+		left->Data.Binary.Operator = operator;
+		left->Data.Binary.Right = right;
+	}
+
+	return left;
+}
+
+ASTNode* ParseComparison(Parser* parser)
+{
+	ASTNode* left = ParseTerm(parser);
+
+	while (parser->Tokens[parser->CurrentToken].Type == TokenLess || parser->Tokens[parser->CurrentToken].Type == TokenLessEqual
+		|| parser->Tokens[parser->CurrentToken].Type == TokenGreater || parser->Tokens[parser->CurrentToken].Type == TokenGreaterEqual) {
+		Token* operator = parser->Tokens + parser->CurrentToken;
+		ParserAdvance(parser);
+
+		ASTNode* temp = left;
+		ASTNode* right = ParseTerm(parser);
+		left = malloc(sizeof(ASTNode));
+		left->Type = Binary;
+		left->Data.Binary.Left = temp;
+		left->Data.Binary.Operator = operator;
+		left->Data.Binary.Right = right;
+	}
+
+	return left;
+}
+
+ASTNode* ParseTerm(Parser* parser)
+{
+	ASTNode* left = ParseFactor(parser);
+
+	while (parser->Tokens[parser->CurrentToken].Type == TokenPlus || parser->Tokens[parser->CurrentToken].Type == TokenMinus) {
+		Token* operator = parser->Tokens + parser->CurrentToken;
+		ParserAdvance(parser);
+
+		ASTNode* temp = left;
+		ASTNode* right = ParseFactor(parser);
+		left = malloc(sizeof(ASTNode));
+		left->Type = Binary;
+		left->Data.Binary.Left = temp;
+		left->Data.Binary.Operator = operator;
+		left->Data.Binary.Right = right;
+	}
+
+	return left;
+}
+
+ASTNode* ParseFactor(Parser* parser)
+{
+	ASTNode* left = ParseExponent(parser);
+
+	while (parser->Tokens[parser->CurrentToken].Type == TokenStar || parser->Tokens[parser->CurrentToken].Type == TokenSlash) {
+		Token* operator = parser->Tokens + parser->CurrentToken;
+		ParserAdvance(parser);
+
+		ASTNode* temp = left;
+		ASTNode* right = ParseExponent(parser);
+		left = malloc(sizeof(ASTNode));
+		left->Type = Binary;
+		left->Data.Binary.Left = temp;
+		left->Data.Binary.Operator = operator;
+		left->Data.Binary.Right = right;
+	}
+
+	return left;
+}
+
+ASTNode* ParseExponent(Parser* parser)
+{
+	ASTNode* left = ParseUnary(parser);
+
+	while (parser->Tokens[parser->CurrentToken].Type == TokenUpArrow) {
+		Token* operator = parser->Tokens + parser->CurrentToken;
+		ParserAdvance(parser);
+
+		ASTNode* temp = left;
+		ASTNode* right = ParseUnary(parser);
+		left = malloc(sizeof(ASTNode));
+		left->Type = Binary;
+		left->Data.Binary.Left = temp;
+		left->Data.Binary.Operator = operator;
+		left->Data.Binary.Right = right;
+	}
+
+	return left;
 }
 
 ASTNode* ParseUnary(Parser* parser)
 {
-	if (parser->Tokens[parser->CurrentToken].Type == Minus) {
-		++parser->CurrentToken;
+	if (parser->Tokens[parser->CurrentToken].Type == TokenMinus) {
+		Token* operator = parser->Tokens + parser->CurrentToken;
+		ParserAdvance(parser);
 
-		Token* operator = parser->Tokens + parser->CurrentToken - 1;
 		ASTNode* operand = ParseUnary(parser);
 
 		ASTNode* result = malloc(sizeof(ASTNode));
@@ -161,49 +584,86 @@ ASTNode* ParseUnary(Parser* parser)
 		return result;
 	}
 
-	return ParsePrimary(parser);
+	return ParsePostfix(parser);
 }
 
-ASTNode* ParseFactor(Parser* parser)
+ASTNode* ParsePostfix(Parser* parser)
 {
-	ASTNode* unary = ParseUnary(parser);
+	ASTNode* primary = ParsePrimary(parser);
 
-	while (parser->Tokens[parser->CurrentToken].Type == Slash || parser->Tokens[parser->CurrentToken].Type == Star) {
-		++parser->CurrentToken;
+	if (parser->Tokens[parser->CurrentToken].Type == TokenApostrophe) {
+		Token* operator = parser->Tokens + parser->CurrentToken;
+		ParserAdvance(parser);
 
-		Token* token = parser->Tokens + parser->CurrentToken - 1;
-		ASTNode* right = ParseUnary(parser);
-
-		ASTNode* temp = unary;
-		unary = malloc(sizeof(ASTNode));
-		unary->Type = Binary;
-		unary->Data.Binary.Left = temp;
-		unary->Data.Binary.Operator = token;
-		unary->Data.Binary.Right = right;
+		ASTNode* postfix = malloc(sizeof(ASTNode));
+		postfix->Type = Unary;
+		postfix->Data.Unary.Operator = operator;
+		postfix->Data.Unary.Operand = primary;
+		return postfix;
 	}
 
-	return unary;
+	return primary;
 }
 
-ASTNode* ParseTerm(Parser* parser)
+ASTNode* ParsePrimary(Parser* parser)
 {
-	ASTNode* factor = ParseFactor(parser);
+	if (ParserMatch(parser, TokenNumber)) {
+		ASTNode* number = malloc(sizeof(ASTNode));
+		number->Type = Literal;
+		number->Data.Literal = parser->Tokens[parser->CurrentToken - 1].Number;
 
-	while (parser->Tokens[parser->CurrentToken].Type == Plus || parser->Tokens[parser->CurrentToken].Type == Minus) {
-		++parser->CurrentToken;
-
-		Token* token = parser->Tokens + parser->CurrentToken - 1;
-		ASTNode* right = ParseFactor(parser);
-
-		ASTNode* temp = factor;
-		factor = malloc(sizeof(ASTNode));
-		factor->Type = Binary;
-		factor->Data.Binary.Left = temp;
-		factor->Data.Binary.Operator = token;
-		factor->Data.Binary.Right = right;
+		return number;
 	}
 
-	return factor;
+	if (ParserMatch(parser, TokenLeftRoundBracket)) {
+		ASTNode* expression = ParseExpression(parser);
+		ParserExpect(parser, TokenRightRoundBracket);
+
+		return expression;
+	}
+
+	if (parser->Tokens[parser->CurrentToken].Type == TokenIdentifier) {
+		return ParseIdentifierPrimary(parser);
+	}
+
+	if (parser->Tokens[parser->CurrentToken].Type == TokenLeftSquareBracket) {
+		// TODO: Implement matrix literals
+		printf("Unimplemented!!\n");
+		return nullptr;
+	}
+
+	if (parser->Tokens[parser->CurrentToken].Type == TokenLeftVectorBracket) {
+		// TODO: Implement vector literals
+		printf("Unimplemented!!\n");
+		return nullptr;
+	}
+
+	printf("Unexpected token %s in primary\n", parser->Tokens[parser->CurrentToken].Lexeme);
+	return nullptr;
+}
+
+ASTNode* ParseIdentifierPrimary(Parser* parser)
+{
+	Token* identifier = parser->Tokens + parser->CurrentToken;
+	ParserAdvance(parser);
+
+	if (ParserMatch(parser, TokenLeftRoundBracket)) {
+		// TODO: Implement function calls
+		printf("Unimplemented!!\n");
+		return nullptr;
+	}
+
+	if (ParserMatch(parser, TokenLeftSquareBracket)) {
+		// TODO: Implement indexing
+		printf("Unimplemented!!\n");
+		return nullptr;
+	}
+
+	ASTNode* astIdentifier = malloc(sizeof(ASTNode));
+	astIdentifier->Type = Identifier;
+	astIdentifier->Data.Identifier = identifier;
+
+	return astIdentifier;
 }
 
 typedef struct Scanner {
@@ -245,49 +705,136 @@ void Scan()
 			}
 			break;
 		case '(':
-			ScannerAddToken(LeftRoundBracket, 0);
+			ScannerAddToken(TokenLeftRoundBracket, 0);
 			break;
 		case ')':
-			ScannerAddToken(RightRoundBracket, 0);
+			ScannerAddToken(TokenRightRoundBracket, 0);
 			break;
 		case '[':
-			ScannerAddToken(LeftSquareBracket, 0);
+			ScannerAddToken(TokenLeftSquareBracket, 0);
 			break;
 		case ']':
-			ScannerAddToken(RightSquareBracket, 0);
+			ScannerAddToken(TokenRightSquareBracket, 0);
 			break;
 		case '<':
-			ScannerAddToken(LeftAngleBracket, 0);
+			if (g_scanner.Source[g_scanner.LexemeCurrent] == '=') {
+				ScannerAddToken(TokenLessEqual, 0);
+				++g_scanner.LexemeCurrent;
+			} else if (g_scanner.Source[g_scanner.LexemeCurrent] == '<') {
+				ScannerAddToken(TokenLeftVectorBracket, 0);
+				++g_scanner.LexemeCurrent;
+			} else {
+				ScannerAddToken(TokenLess, 0);
+			}
 			break;
 		case '>':
-			ScannerAddToken(RightAngleBracket, 0);
+			if (g_scanner.Source[g_scanner.LexemeCurrent] == '=') {
+				ScannerAddToken(TokenGreaterEqual, 0);
+				++g_scanner.LexemeCurrent;
+			} else if (g_scanner.Source[g_scanner.LexemeCurrent] == '>') {
+				ScannerAddToken(TokenRightVectorBracket, 0);
+				++g_scanner.LexemeCurrent;
+			} else {
+				ScannerAddToken(TokenGreater, 0);
+			}
+			break;
+		case '{':
+			ScannerAddToken(TokenLeftCurlyBracket, 0);
+			break;
+		case '}':
+			ScannerAddToken(TokenRightCurlyBracket, 0);
 			break;
 		case ',':
-			ScannerAddToken(Comma, 0);
+			ScannerAddToken(TokenComma, 0);
 			break;
 		case '+':
-			ScannerAddToken(Plus, 0);
+			ScannerAddToken(TokenPlus, 0);
 			break;
 		case '-':
-			ScannerAddToken(Minus, 0);
+			ScannerAddToken(TokenMinus, 0);
 			break;
 		case '*':
-			ScannerAddToken(Star, 0);
+			ScannerAddToken(TokenStar, 0);
 			break;
 		case '/':
-			ScannerAddToken(Slash, 0);
+			ScannerAddToken(TokenSlash, 0);
 			break;
 		case '^':
-			ScannerAddToken(UpArrow, 0);
+			ScannerAddToken(TokenUpArrow, 0);
 			break;
 		case '\'':
-			ScannerAddToken(Apostrophe, 0);
+			ScannerAddToken(TokenApostrophe, 0);
 			break;
 		case ':':
-			ScannerAddToken(Colon, 0);
+			ScannerAddToken(TokenColon, 0);
+
+			while (isspace(g_scanner.Source[g_scanner.LexemeCurrent])) {
+				++g_scanner.LexemeCurrent;
+			}
+
+			g_scanner.LexemeStart = g_scanner.LexemeCurrent;
+
+			if (!isdigit(g_scanner.Source[g_scanner.LexemeCurrent++])) {
+				printf("Expected type declaration at line %lu.\n", g_scanner.Line);
+
+				while (isalnum(g_scanner.Source[g_scanner.LexemeCurrent])) {
+					++g_scanner.LexemeCurrent;
+				}
+
+				break;
+			}
+
+			while (isdigit(g_scanner.Source[g_scanner.LexemeCurrent])) {
+				++g_scanner.LexemeCurrent;
+			}
+
+			if (g_scanner.Source[g_scanner.LexemeCurrent++] != 'x') {
+				printf("Expected type declaration at line %lu.\n", g_scanner.Line);
+
+				while (isalnum(g_scanner.Source[g_scanner.LexemeCurrent])) {
+					++g_scanner.LexemeCurrent;
+				}
+
+				break;
+			}
+
+			if (!isdigit(g_scanner.Source[g_scanner.LexemeCurrent++])) {
+				printf("Expected type declaration at line %lu.\n", g_scanner.Line);
+
+				while (isalnum(g_scanner.Source[g_scanner.LexemeCurrent])) {
+					++g_scanner.LexemeCurrent;
+				}
+
+				break;
+			}
+
+			while (isdigit(g_scanner.Source[g_scanner.LexemeCurrent])) {
+				++g_scanner.LexemeCurrent;
+			}
+
+			{
+				char* lexeme = malloc(g_scanner.LexemeCurrent - g_scanner.LexemeStart + 1);
+				lexeme[g_scanner.LexemeCurrent - g_scanner.LexemeStart] = '\0';
+				memcpy(lexeme, g_scanner.Source + g_scanner.LexemeStart, g_scanner.LexemeCurrent - g_scanner.LexemeStart);
+				g_scanner.Tokens[g_scanner.TokensFreeIndex].Lexeme = lexeme;
+
+				g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenMatrixShape;
+				g_scanner.Tokens[g_scanner.TokensFreeIndex].Number = 0;
+				g_scanner.Tokens[g_scanner.TokensFreeIndex].SourceLine = g_scanner.Line;
+
+				++g_scanner.TokensFreeIndex;
+			}
 			break;
 		case '=':
-			ScannerAddToken(Equal, 0);
+			if (g_scanner.Source[g_scanner.LexemeCurrent] == '=') {
+				ScannerAddToken(TokenEqualEqual, 0);
+				++g_scanner.LexemeCurrent;
+			} else {
+				ScannerAddToken(TokenEqual, 0);
+			}
+			break;
+		case ';':
+			ScannerAddToken(TokenSemicolon, 0);
 			break;
 		case ' ':
 		case '\r':
@@ -314,7 +861,7 @@ void Scan()
 				memcpy(lexeme, g_scanner.Source + g_scanner.LexemeStart, g_scanner.LexemeCurrent - g_scanner.LexemeStart);
 				g_scanner.Tokens[g_scanner.TokensFreeIndex].Lexeme = lexeme;
 
-				g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = Number;
+				g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenNumber;
 				g_scanner.Tokens[g_scanner.TokensFreeIndex].Number = atof(lexeme);
 				g_scanner.Tokens[g_scanner.TokensFreeIndex].SourceLine = g_scanner.Line;
 
@@ -333,28 +880,32 @@ void Scan()
 				g_scanner.Tokens[g_scanner.TokensFreeIndex].SourceLine = g_scanner.Line;
 
 				if (strcmp(lexeme, "let") == 0) {
-					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = Let;
+					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenLet;
 				} else if (strcmp(lexeme, "const") == 0) {
-					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = Const;
-				} else if (strcmp(lexeme, "det") == 0) {
-					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = Det;
-				} else if (strcmp(lexeme, "ident") == 0) {
-					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = Ident;
-				} else if (strcmp(lexeme, "inv") == 0) {
-					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = Inv;
+					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenConst;
+				} else if (strcmp(lexeme, "if") == 0) {
+					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenIf;
+				} else if (strcmp(lexeme, "while") == 0) {
+					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenWhile;
+				} else if (strcmp(lexeme, "else") == 0) {
+					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenElse;
+				} else if (strcmp(lexeme, "and") == 0) {
+					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenAnd;
+				} else if (strcmp(lexeme, "or") == 0) {
+					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenOr;
 				} else {
-					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = Identifier;
+					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenIdentifier;
 				}
 
 				++g_scanner.TokensFreeIndex;
 			} else {
-				printf("Unexpected character '%c' at line %lu.", c, g_scanner.Line);
+				printf("Unexpected character '%c' at line %lu.\n", c, g_scanner.Line);
 			}
 			break;
 		}
 	}
 
-	g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = Eof;
+	g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenEof;
 	g_scanner.Tokens[g_scanner.TokensFreeIndex].Lexeme = nullptr;
 	g_scanner.Tokens[g_scanner.TokensFreeIndex].SourceLine = g_scanner.Line;
 
@@ -425,9 +976,9 @@ int main(int argc, char* argv[])
 
 	g_parser.Tokens = g_scanner.Tokens;
 
-	ASTNode* term = ParseTerm(&g_parser);
+	ASTNode* program = ParseProgram(&g_parser);
 
-	ASTNodePrint(term);
+	ASTNodePrint(program);
 
 	return 0;
 }

@@ -81,45 +81,51 @@ if s > 15 {
 ## EBNF
 
 ```ebnf
-program      ::= statement* EOF
+program       ::= statement* EOF
 
-statement    ::= var_decl
-               | assignment
-               | if_stmt
-               | while_stmt
-               | block
-               | expression
+statement     ::= compound_stmt
+               | simple_stmt ";"
 
-block        ::= "{" statement* "}"
+compound_stmt ::= if_stmt
+                | while_stmt
+                | block
 
-if_stmt      ::= "if" expression block ( "else" ( if_stmt | block ) )?
-while_stmt   ::= "while" expression block
+simple_stmt   ::= var_decl
+                | assignment
+                | jump_stmt
+                | expression
 
-var_decl     ::= ( "let" | "const" ) IDENTIFIER type_decl? "=" expression
-type_decl    ::= ":" INTEGER "x" INTEGER
+block         ::= "{" statement* "}"
 
-assignment   ::= IDENTIFIER index_suffix? "=" expression
-index_suffix ::= "[" expression ( expression )? "]"
+if_stmt       ::= "if" expression block ( "else" ( if_stmt | block ) )?
+while_stmt    ::= "while" expression block
 
-matrix_lit   ::= row_lit ( row_lit )*
-row_lit      ::= "[" expression+ "]"
-vector_lit   ::= "<" expression+ ">"
+var_decl      ::= ( "let" | "const" ) IDENTIFIER type_decl? "=" expression
+type_decl     ::= ":" INTEGER "x" INTEGER
 
-expression   ::= logic_and ( "or" logic_and )*
-logic_and    ::= equality ( "and" equality )*
-equality     ::= comparison ( ( "==" | "!=" ) comparison )?
-comparison   ::= term ( ( "<" | "<=" | ">" | ">=" ) term )?
-term         ::= factor ( ( "+" | "-") factor )*
-factor       ::= exponent ( ( "*" | "/" ) exponent )*
-exponent     ::= unary ( "^" unary )?
-unary        ::= ( "-" unary ) | postfix
-postfix      ::= primary ( "'" )?
+assignment    ::= IDENTIFIER index_suffix? "=" expression
+index_suffix  ::= "[" expression ( expression )? "]"
 
-primary      ::= IDENTIFIER ( "(" call_args? ")" | index_suffix )? 
+matrix_lit    ::= row_lit ( row_lit )*
+row_lit       ::= "[" expression+ "]"
+# This is temporary, just to make parsing easier for now, I'll later change it back to "<" ">"
+vector_lit    ::= "<<" expression+ ">>"
+
+expression    ::= logic_and ( "or" logic_and )*
+logic_and     ::= equality ( "and" equality )*
+equality      ::= comparison ( ( "==" | "!=" ) comparison )?
+comparison    ::= term ( ( "<" | "<=" | ">" | ">=" ) term )?
+term          ::= factor ( ( "+" | "-") factor )*
+factor        ::= exponent ( ( "*" | "/" ) exponent )*
+exponent      ::= unary ( "^" unary )?
+unary         ::= ( "-" unary ) | postfix
+postfix       ::= primary ( "'" )?
+
+primary       ::= IDENTIFIER ( "(" call_args? ")" | index_suffix )? 
                | NUMBER 
                | matrix_lit 
                | vector_lit 
                | "(" expression ")"
 
-call_args    ::= expression ( "," expression )*
+call_args     ::= expression ( "," expression )*
 ```
