@@ -82,7 +82,7 @@ typedef struct ASTNode {
 		} Unary;
 
 		struct {
-			struct ASTNode* Node;
+			struct ASTNode* Expression;
 		} Grouping;
 
 		struct {
@@ -148,7 +148,7 @@ void ASTNodePrint(const ASTNode* node)
 		break;
 	case Grouping:
 		printf("(grouping ");
-		ASTNodePrint(node->Data.Grouping.Node);
+		ASTNodePrint(node->Data.Grouping.Expression);
 		printf(")");
 		break;
 	case Binary:
@@ -428,6 +428,7 @@ ASTNode* ParseExpressionOrAssignment(Parser* parser)
 	return ParseExpression(parser);
 }
 
+// TODO: Check all of these functions so they match up exactly with the EBNF
 ASTNode* ParseExpression(Parser* parser)
 {
 	ASTNode* left = ParseLogicAnd(parser);
@@ -617,9 +618,14 @@ ASTNode* ParsePrimary(Parser* parser)
 
 	if (ParserMatch(parser, TokenLeftRoundBracket)) {
 		ASTNode* expression = ParseExpression(parser);
+
+		ASTNode* grouping = malloc(sizeof(ASTNode));
+		grouping->Type = Grouping;
+		grouping->Data.Grouping.Expression = expression;
+
 		ParserExpect(parser, TokenRightRoundBracket);
 
-		return expression;
+		return grouping;
 	}
 
 	if (parser->Tokens[parser->CurrentToken].Type == TokenIdentifier) {
