@@ -108,7 +108,7 @@ index_suffix  ::= "[" expression ( expression )? "]"
 
 matrix_lit    ::= row_lit ( row_lit )*
 row_lit       ::= "[" expression+ "]"
-(* This is temporary, just to make parsing easier for now, I'll later change it back to "<" ">" *)
+# This is temporary, just to make parsing easier for now, I'll later change it back to "<" ">"
 vector_lit    ::= "<<" expression+ ">>"
 
 expression    ::= logic_and ( "or" logic_and )*
