@@ -22,7 +22,6 @@ typedef enum TokenType : uint8_t {
 	TokenApostrophe,
 	TokenColon,
 	TokenMatrixShape,
-	TokenSemicolon,
 	TokenEqual,
 	TokenIdentifier,
 	TokenNumber,
@@ -61,7 +60,8 @@ typedef enum ASTNodeType : uint8_t {
 	IndexSuffix,
 	Assignment,
 	Identifier,
-	Number
+	Number,
+	FunctionCall
 } ASTNodeType;
 
 struct ASTNode;
@@ -134,6 +134,12 @@ typedef struct ASTNode {
 			// Nullable
 			struct ASTNode* Index;
 		} Identifier;
+
+		struct {
+			Token* Identifier;
+			struct ASTNode** CallArgs;
+			size_t ArgCount;
+		} FunctionCall;
 	} Data;
 } ASTNode;
 
@@ -144,8 +150,9 @@ void ASTNodePrint(const ASTNode* node)
 		printf("%lf", node->Data.Number);
 		break;
 	case Literal:
-		printf("(lit ");
+		printf("(lit %lux%lu ", node->Data.Literal.Height, node->Data.Literal.Width);
 		for (size_t i = 0; i < node->Data.Literal.Height; ++i) {
+			printf("(row ");
 			for (size_t j = 0; j < node->Data.Literal.Width; ++j) {
 				ASTNodePrint(node->Data.Literal.Matrix[(i * node->Data.Literal.Width) + j]);
 
@@ -153,6 +160,7 @@ void ASTNodePrint(const ASTNode* node)
 					printf(" ");
 				}
 			}
+			printf(")");
 		}
 		printf(")");
 		break;
@@ -208,8 +216,10 @@ void ASTNodePrint(const ASTNode* node)
 		ASTNodePrint(node->Data.IfStmt.Condition);
 		printf(" then ");
 		ASTNodePrint(node->Data.IfStmt.ThenBlock);
-		printf(" else ");
-		ASTNodePrint(node->Data.IfStmt.ElseBlock);
+		if (node->Data.IfStmt.ElseBlock) {
+			printf(" else ");
+			ASTNodePrint(node->Data.IfStmt.ElseBlock);
+		}
 		printf(" )");
 		break;
 	case IndexSuffix:
@@ -234,6 +244,15 @@ void ASTNodePrint(const ASTNode* node)
 		printf("(ident %s ", node->Data.Identifier.Identifier->Lexeme);
 		if (node->Data.Identifier.Index) {
 			ASTNodePrint(node->Data.Identifier.Index);
+		}
+		printf(")");
+		break;
+	case FunctionCall:
+		printf("(call %s ", node->Data.FunctionCall.Identifier->Lexeme);
+		for (size_t i = 0; i < node->Data.FunctionCall.ArgCount; ++i) {
+			printf("(arg ");
+			ASTNodePrint(node->Data.FunctionCall.CallArgs[i]);
+			printf(")");
 		}
 		printf(")");
 		break;
@@ -305,7 +324,6 @@ ASTNode* ParseProgram(Parser* parser)
 	return topLevelBlock;
 }
 
-// TODO: Implement mandatoy semicolons
 ASTNode* ParseStatement(Parser* parser)
 {
 	switch (parser->Tokens[parser->CurrentToken].Type) {
@@ -457,7 +475,6 @@ ASTNode* ParseExpressionOrAssignment(Parser* parser)
 	return ParseExpression(parser);
 }
 
-// TODO: Check all of these functions so they match up exactly with the EBNF
 ASTNode* ParseExpression(Parser* parser)
 {
 	ASTNode* left = ParseLogicAnd(parser);
@@ -667,9 +684,69 @@ ASTNode* ParsePrimary(Parser* parser)
 	}
 
 	if (parser->Tokens[parser->CurrentToken].Type == TokenLeftSquareBracket) {
-		// TODO: Implement matrix literals
-		printf("Unimplemented!!\n");
-		return nullptr;
+		ParserAdvance(parser);
+
+		ASTNode* matrixLit = malloc(sizeof(ASTNode));
+		matrixLit->Type = Literal;
+		matrixLit->Data.Literal.Matrix = (ASTNode**)malloc(64 * sizeof(ASTNode*));
+
+		if (ParserMatch(parser, TokenRightSquareBracket)) {
+			printf("Empty matrix row literals not allowed\n");
+		}
+
+		size_t currentTokenBackup = parser->CurrentToken;
+		size_t height = 0;
+		size_t width = 0;
+		size_t maxWidth = 0;
+		do {
+			while (parser->Tokens[parser->CurrentToken].Type != TokenRightSquareBracket) {
+				ParseExpression(parser);
+				++width;
+			}
+
+			ParserExpect(parser, TokenRightSquareBracket);
+
+			if (width > maxWidth) {
+				maxWidth = width;
+			}
+
+			++height;
+			width = 0;
+		} while (ParserMatch(parser, TokenLeftSquareBracket));
+
+		parser->CurrentToken = currentTokenBackup;
+		size_t i = 0;
+		size_t j = 0;
+		do {
+			while (parser->Tokens[parser->CurrentToken].Type != TokenRightSquareBracket) {
+				matrixLit->Data.Literal.Matrix[(i * maxWidth) + j] = ParseExpression(parser);
+				++j;
+			}
+
+			while (j < maxWidth) {
+				ASTNode* zero = malloc(sizeof(ASTNode));
+				zero->Type = Literal;
+				zero->Data.Literal.Matrix = (ASTNode**)malloc(sizeof(ASTNode*));
+				zero->Data.Literal.Matrix[0] = malloc(sizeof(ASTNode));
+				zero->Data.Literal.Matrix[0]->Type = Number;
+				zero->Data.Literal.Matrix[0]->Data.Number = 0;
+				zero->Data.Literal.Width = 1;
+				zero->Data.Literal.Height = 1;
+
+				matrixLit->Data.Literal.Matrix[(i * maxWidth) + j] = zero;
+
+				++j;
+			}
+
+			ParserExpect(parser, TokenRightSquareBracket);
+			++i;
+			j = 0;
+		} while (ParserMatch(parser, TokenLeftSquareBracket));
+
+		matrixLit->Data.Literal.Height = height;
+		matrixLit->Data.Literal.Width = maxWidth;
+
+		return matrixLit;
 	}
 
 	if (parser->Tokens[parser->CurrentToken].Type == TokenLeftVectorBracket) {
@@ -698,6 +775,7 @@ ASTNode* ParsePrimary(Parser* parser)
 	}
 
 	printf("Unexpected token %s in primary\n", parser->Tokens[parser->CurrentToken].Lexeme);
+	exit(1);
 	return nullptr;
 }
 
@@ -708,9 +786,25 @@ ASTNode* ParseIdentifierPrimary(Parser* parser)
 
 	// A function call
 	if (ParserMatch(parser, TokenLeftRoundBracket)) {
-		// TODO: Implement function calls
-		printf("Unimplemented!!\n");
-		return nullptr;
+		ASTNode* functionCall = malloc(sizeof(ASTNode));
+		functionCall->Type = FunctionCall;
+		functionCall->Data.FunctionCall.Identifier = identifier;
+		functionCall->Data.FunctionCall.CallArgs = (ASTNode**)malloc(8 * sizeof(ASTNode*));
+
+		size_t i = 0;
+		while (parser->Tokens[parser->CurrentToken].Type != TokenRightRoundBracket) {
+			if (i > 0) {
+				ParserExpect(parser, TokenComma);
+			}
+
+			functionCall->Data.FunctionCall.CallArgs[i] = ParseExpression(parser);
+			++i;
+		}
+
+		ParserExpect(parser, TokenRightRoundBracket);
+		functionCall->Data.FunctionCall.ArgCount = i;
+
+		return functionCall;
 	}
 
 	// Not a function call
@@ -905,8 +999,13 @@ void Scan()
 				ScannerAddToken(TokenEqual, 0);
 			}
 			break;
-		case ';':
-			ScannerAddToken(TokenSemicolon, 0);
+		case '!':
+			if (g_scanner.Source[g_scanner.LexemeCurrent] == '=') {
+				++g_scanner.LexemeCurrent;
+				ScannerAddToken(TokenNotEqual, 0);
+			} else {
+				printf("Unexpected character '!' at line %lu.\n", g_scanner.Line);
+			}
 			break;
 		case ' ':
 		case '\r':
