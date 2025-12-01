@@ -171,7 +171,7 @@ void ASTNodePrint(const ASTNode* node)
 			ASTNodePrint(node->Data.Block.Nodes[i]);
 			printf("\n");
 		}
-		printf(")");
+		printf(")\n");
 		break;
 	case Unary:
 		printf("(un%s ", node->Data.Unary.Operator->Lexeme);
@@ -256,6 +256,468 @@ void ASTNodePrint(const ASTNode* node)
 		}
 		printf(")");
 		break;
+	}
+}
+
+typedef struct Mx {
+	double* Data;
+	size_t Height;
+	size_t Width;
+} Mx;
+
+void MxPrint(const Mx* mx)
+{
+	for (size_t i = 0; i < mx->Height; ++i) {
+		printf("[");
+
+		for (size_t j = 0; j < mx->Width; ++j) {
+			printf("%lf", mx->Data[(i * mx->Width) + j]);
+
+			if (j < mx->Width - 1) {
+				printf(" ");
+			}
+		}
+
+		printf("]");
+	}
+}
+
+Mx* MxAdd(const Mx* left, const Mx* right)
+{
+	if (left->Height != right->Height || left->Width != right->Width) {
+		printf("Incompatible matrix shapes\n");
+		exit(1);
+	}
+
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(left->Width * left->Height * sizeof(double));
+	result->Height = left->Height;
+	result->Width = left->Width;
+	memset(result->Data, 0, result->Height * result->Width * sizeof(double));
+
+	for (size_t i = 0; i < left->Height * left->Width; ++i) {
+		result->Data[i] = left->Data[i] + right->Data[i];
+	}
+
+	return result;
+}
+
+Mx* MxSubtract(const Mx* left, const Mx* right)
+{
+	if (left->Height != right->Height || left->Width != right->Width) {
+		printf("Incompatible matrix shapes\n");
+		exit(1);
+	}
+
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(left->Width * left->Height * sizeof(double));
+	result->Height = left->Height;
+	result->Width = left->Width;
+	memset(result->Data, 0, result->Height * result->Width * sizeof(double));
+
+	for (size_t i = 0; i < left->Height * left->Width; ++i) {
+		result->Data[i] = left->Data[i] - right->Data[i];
+	}
+
+	return result;
+}
+
+Mx* MxMultiply(const Mx* left, const Mx* right)
+{
+	if (left->Width != right->Height) {
+		printf("Incompatible matrix shapes\n");
+		exit(1);
+	}
+
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(left->Height * right->Width * sizeof(double));
+	result->Height = left->Height;
+	result->Width = right->Width;
+	memset(result->Data, 0, result->Height * result->Width * sizeof(double));
+
+	for (size_t i = 0; i < left->Height; ++i) {
+		for (size_t j = 0; j < right->Height; ++j) {
+			for (size_t k = 0; k < right->Width; ++k) {
+				result->Data[(i * result->Width) + k] += left->Data[(i * left->Width) + j] * right->Data[(j * right->Width) + k];
+			}
+		}
+	}
+
+	return result;
+}
+
+Mx* MxDivide(const Mx* left, const Mx* right)
+{
+	if (left->Width != right->Height) {
+		printf("Incompatible matrix shapes\n");
+		exit(1);
+	}
+
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(left->Height * right->Width * sizeof(double));
+	result->Height = left->Height;
+	result->Width = right->Width;
+	memset(result->Data, 0, result->Height * result->Width * sizeof(double));
+
+	for (size_t i = 0; i < left->Height; ++i) {
+		for (size_t j = 0; j < right->Height; ++j) {
+			for (size_t k = 0; k < right->Width; ++k) {
+				result->Data[(i * result->Width) + k] += left->Data[(i * left->Width) + j] / right->Data[(j * right->Width) + k];
+			}
+		}
+	}
+
+	return result;
+}
+
+Mx* MxPower(const Mx* left, double right)
+{
+	Mx* mx = (Mx*)left;
+	for (size_t i = 0; i < (size_t)right - 1; ++i) {
+		mx = MxMultiply(mx, left);
+	}
+
+	return mx;
+}
+
+Mx* MxNegate(const Mx* mx)
+{
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(mx->Width * mx->Height * sizeof(double));
+	result->Height = mx->Height;
+	result->Width = mx->Width;
+	memset(result->Data, 0, result->Height * result->Width * sizeof(double));
+
+	for (size_t i = 0; i < mx->Height * mx->Width; ++i) {
+		result->Data[i] = -mx->Data[i];
+	}
+
+	return result;
+}
+
+Mx* MxGreater(const Mx* left, const Mx* right)
+{
+	if (left->Height != right->Height || left->Width != right->Width) {
+		printf("Incompatible matrix shapes\n");
+		exit(1);
+	}
+
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(sizeof(double));
+	result->Data[0] = 1;
+	result->Height = 1;
+	result->Width = 1;
+
+	for (size_t i = 0; i < left->Height * left->Width; ++i) {
+		if (left->Data[i] <= right->Data[i]) {
+			result->Data[0] = 0;
+			break;
+		}
+	}
+
+	return result;
+}
+
+Mx* MxGreaterEqual(const Mx* left, const Mx* right)
+{
+	if (left->Height != right->Height || left->Width != right->Width) {
+		printf("Incompatible matrix shapes\n");
+		exit(1);
+	}
+
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(sizeof(double));
+	result->Data[0] = 1;
+	result->Height = 1;
+	result->Width = 1;
+
+	for (size_t i = 0; i < left->Height * left->Width; ++i) {
+		if (left->Data[i] < right->Data[i]) {
+			result->Data[0] = 0;
+			break;
+		}
+	}
+
+	return result;
+}
+
+Mx* MxLess(const Mx* left, const Mx* right)
+{
+	if (left->Height != right->Height || left->Width != right->Width) {
+		printf("Incompatible matrix shapes\n");
+		exit(1);
+	}
+
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(sizeof(double));
+	result->Data[0] = 1;
+	result->Height = 1;
+	result->Width = 1;
+
+	for (size_t i = 0; i < left->Height * left->Width; ++i) {
+		if (left->Data[i] >= right->Data[i]) {
+			result->Data[0] = 0;
+			break;
+		}
+	}
+
+	return result;
+}
+
+Mx* MxLessEqual(const Mx* left, const Mx* right)
+{
+	if (left->Height != right->Height || left->Width != right->Width) {
+		printf("Incompatible matrix shapes\n");
+		exit(1);
+	}
+
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(sizeof(double));
+	result->Data[0] = 1;
+	result->Height = 1;
+	result->Width = 1;
+
+	for (size_t i = 0; i < left->Height * left->Width; ++i) {
+		if (left->Data[i] > right->Data[i]) {
+			result->Data[0] = 0;
+			break;
+		}
+	}
+
+	return result;
+}
+
+Mx* MxEqualEqual(const Mx* left, const Mx* right)
+{
+	if (left->Height != right->Height || left->Width != right->Width) {
+		printf("Incompatible matrix shapes\n");
+		exit(1);
+	}
+
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(sizeof(double));
+	result->Data[0] = 1;
+	result->Height = 1;
+	result->Width = 1;
+
+	for (size_t i = 0; i < left->Height * left->Width; ++i) {
+		if (left->Data[i] != right->Data[i]) {
+			result->Data[0] = 0;
+			break;
+		}
+	}
+
+	return result;
+}
+
+Mx* MxNotEqual(const Mx* left, const Mx* right)
+{
+	if (left->Height != right->Height || left->Width != right->Width) {
+		printf("Incompatible matrix shapes\n");
+		exit(1);
+	}
+
+	Mx* result = malloc(sizeof(Mx));
+	result->Data = malloc(sizeof(double));
+	result->Data[0] = 1;
+	result->Height = 1;
+	result->Width = 1;
+
+	for (size_t i = 0; i < left->Height * left->Width; ++i) {
+		if (left->Data[i] == right->Data[i]) {
+			result->Data[0] = 0;
+			break;
+		}
+	}
+
+	return result;
+}
+
+typedef struct Var {
+	const char* Name;
+	Mx* Value;
+	bool IsConst;
+} Var;
+
+typedef struct Env {
+	struct Env* Parent;
+	Var* Vars;
+	size_t VarCount;
+	size_t NextFreeVar;
+} Env;
+
+Env* g_currentEnv = nullptr;
+
+Var* EnvGetVar(Env* env, const char* name)
+{
+	for (size_t i = 0; i < env->VarCount; ++i) {
+		if (strcmp(env->Vars[i].Name, name) == 0) {
+			return env->Vars + i;
+		}
+	}
+
+	if (env->Parent) {
+		return EnvGetVar(env->Parent, name);
+	}
+
+	return nullptr;
+}
+
+Mx* ASTNodeEval(ASTNode* node)
+{
+	switch (node->Type) {
+	case Number: {
+		Mx* result = malloc(sizeof(Mx));
+		result->Data = malloc(sizeof(double));
+		result->Data[0] = node->Data.Number;
+		result->Height = 1;
+		result->Width = 1;
+
+		return result;
+	}
+	case Literal: {
+		Mx* result = malloc(sizeof(Mx));
+		result->Data = malloc(node->Data.Literal.Height * node->Data.Literal.Width * sizeof(double));
+		result->Height = node->Data.Literal.Height;
+		result->Width = node->Data.Literal.Width;
+
+		for (size_t i = 0; i < result->Height * result->Width; ++i) {
+			// This must be a single number
+			Mx* number = ASTNodeEval(node->Data.Literal.Matrix[i]);
+			if (number->Height != 1 || number->Width != 1) {
+				printf("Everything inside a matrix must evaluate to a single number!\n");
+				exit(1);
+			}
+
+			result->Data[i] = number->Data[0];
+		}
+
+		return result;
+	}
+	case Unary: {
+		Mx* operand = ASTNodeEval(node->Data.Unary.Operand);
+
+		return MxNegate(operand);
+	}
+	case Grouping:
+		return ASTNodeEval(node->Data.Grouping.Expression);
+	case Binary: {
+		Mx* left = ASTNodeEval(node->Data.Binary.Left);
+		Mx* right = ASTNodeEval(node->Data.Binary.Right);
+
+		switch (node->Data.Binary.Operator->Type) {
+		case TokenPlus:
+			return MxAdd(left, right);
+		case TokenMinus:
+			return MxSubtract(left, right);
+		case TokenStar:
+			return MxMultiply(left, right);
+		case TokenSlash:
+			return MxDivide(left, right);
+		case TokenUpArrow:
+			if (right->Height != 1 || right->Width != 1) {
+				printf("Invalid matrix right operand for powering!\n");
+				exit(1);
+			}
+			return MxPower(left, right->Data[0]);
+		case TokenGreater:
+			return MxGreater(left, right);
+		case TokenGreaterEqual:
+			return MxGreaterEqual(left, right);
+		case TokenLess:
+			return MxLess(left, right);
+		case TokenLessEqual:
+			return MxLessEqual(left, right);
+		case TokenEqualEqual:
+			return MxEqualEqual(left, right);
+		case TokenNotEqual:
+			return MxNotEqual(left, right);
+		default:
+			printf("Error: Unknown binary operator '%s'!\n", node->Data.Binary.Operator->Lexeme);
+			exit(1);
+		}
+	}
+	case Block: {
+		Env* temp = g_currentEnv;
+		g_currentEnv = malloc(sizeof(Env));
+		g_currentEnv->Vars = malloc(64 * sizeof(Var));
+		g_currentEnv->VarCount = 0;
+		g_currentEnv->Parent = temp;
+
+		for (size_t i = 0; i < node->Data.Block.NodeCount; ++i) {
+			ASTNodeEval(node->Data.Block.Nodes[i]);
+		}
+
+		free(g_currentEnv->Vars);
+		free(g_currentEnv);
+
+		g_currentEnv = temp;
+		return nullptr;
+	}
+	case VarDecl: {
+		if (!node->Data.VarDecl.Expression) {
+			printf("Variable '%s' has not been initialized!\n", node->Data.VarDecl.Identifier->Lexeme);
+			exit(1);
+		}
+
+		size_t i = g_currentEnv->NextFreeVar++;
+		g_currentEnv->Vars[i].Name = node->Data.VarDecl.Identifier->Lexeme;
+		g_currentEnv->Vars[i].Value = ASTNodeEval(node->Data.VarDecl.Expression);
+		g_currentEnv->Vars[i].IsConst = node->Data.VarDecl.IsConst;
+		g_currentEnv->VarCount++;
+
+		return nullptr;
+	}
+	case Assignment: {
+		Mx* newValue = ASTNodeEval(node->Data.Assignment.Expression);
+		if (!newValue) {
+			printf("Expression does not return a value!\n");
+			exit(1);
+		}
+
+		Var* var = EnvGetVar(g_currentEnv, node->Data.Assignment.Identifier->Lexeme);
+		if (!var) {
+			printf("Undeclared variable '%s'!\n", node->Data.Assignment.Identifier->Lexeme);
+			exit(1);
+		}
+
+		if (var->IsConst) {
+			printf("Attempted assignment to const variable '%s'!\n", node->Data.Assignment.Identifier->Lexeme);
+			exit(1);
+		}
+
+		var->Value = newValue;
+		return nullptr;
+	}
+	case FunctionCall: {
+		if (strcmp(node->Data.FunctionCall.Identifier->Lexeme, "print") != 0) {
+			printf("Unimplemented function '%s'!\n", node->Data.FunctionCall.Identifier->Lexeme);
+			exit(1);
+		}
+
+		if (!node->Data.FunctionCall.CallArgs[0]) {
+			printf("Invalid print usage, requires at least one argument!\n");
+			exit(1);
+		}
+		Mx* firstArg = ASTNodeEval(node->Data.FunctionCall.CallArgs[0]);
+
+		printf("print: ");
+		MxPrint(firstArg);
+		printf("\n");
+		return nullptr;
+	}
+	case Identifier: {
+		Var* var = EnvGetVar(g_currentEnv, node->Data.Identifier.Identifier->Lexeme);
+		if (!var) {
+			printf("Undeclared variable '%s'!\n", node->Data.Assignment.Identifier->Lexeme);
+			exit(1);
+		}
+
+		return var->Value;
+	}
+	default:
+		printf("Error: Unimplemented ASTNode type %u!\n", node->Type);
+		exit(1);
 	}
 }
 
@@ -480,7 +942,7 @@ ASTNode* ParseExpression(Parser* parser)
 	ASTNode* left = ParseLogicAnd(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenOr) {
-		Token* operator= parser->Tokens + parser->CurrentToken;
+		Token* operator = parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -500,7 +962,7 @@ ASTNode* ParseLogicAnd(Parser* parser)
 	ASTNode* left = ParseEquality(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenAnd) {
-		Token* operator= parser->Tokens + parser->CurrentToken;
+		Token* operator = parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -520,7 +982,7 @@ ASTNode* ParseEquality(Parser* parser)
 	ASTNode* left = ParseComparison(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenEqualEqual || parser->Tokens[parser->CurrentToken].Type == TokenNotEqual) {
-		Token* operator= parser->Tokens + parser->CurrentToken;
+		Token* operator = parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -541,7 +1003,7 @@ ASTNode* ParseComparison(Parser* parser)
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenLess || parser->Tokens[parser->CurrentToken].Type == TokenLessEqual
 		|| parser->Tokens[parser->CurrentToken].Type == TokenGreater || parser->Tokens[parser->CurrentToken].Type == TokenGreaterEqual) {
-		Token* operator= parser->Tokens + parser->CurrentToken;
+		Token* operator = parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -561,7 +1023,7 @@ ASTNode* ParseTerm(Parser* parser)
 	ASTNode* left = ParseFactor(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenPlus || parser->Tokens[parser->CurrentToken].Type == TokenMinus) {
-		Token* operator= parser->Tokens + parser->CurrentToken;
+		Token* operator = parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -581,7 +1043,7 @@ ASTNode* ParseFactor(Parser* parser)
 	ASTNode* left = ParseExponent(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenStar || parser->Tokens[parser->CurrentToken].Type == TokenSlash) {
-		Token* operator= parser->Tokens + parser->CurrentToken;
+		Token* operator = parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -601,7 +1063,7 @@ ASTNode* ParseExponent(Parser* parser)
 	ASTNode* left = ParseUnary(parser);
 
 	while (parser->Tokens[parser->CurrentToken].Type == TokenUpArrow) {
-		Token* operator= parser->Tokens + parser->CurrentToken;
+		Token* operator = parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* temp = left;
@@ -619,7 +1081,7 @@ ASTNode* ParseExponent(Parser* parser)
 ASTNode* ParseUnary(Parser* parser)
 {
 	if (parser->Tokens[parser->CurrentToken].Type == TokenMinus) {
-		Token* operator= parser->Tokens + parser->CurrentToken;
+		Token* operator = parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* operand = ParseUnary(parser);
@@ -639,7 +1101,7 @@ ASTNode* ParsePostfix(Parser* parser)
 	ASTNode* primary = ParsePrimary(parser);
 
 	if (parser->Tokens[parser->CurrentToken].Type == TokenApostrophe) {
-		Token* operator= parser->Tokens + parser->CurrentToken;
+		Token* operator = parser->Tokens + parser->CurrentToken;
 		ParserAdvance(parser);
 
 		ASTNode* postfix = malloc(sizeof(ASTNode));
@@ -1150,6 +1612,10 @@ int main(int argc, char* argv[])
 	ASTNode* program = ParseProgram(&g_parser);
 
 	ASTNodePrint(program);
+
+	printf("\n");
+
+	ASTNodeEval(program);
 
 	return 0;
 }

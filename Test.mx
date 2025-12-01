@@ -1,1 +1,20 @@
-let a = b^123^c
+let a = [1 2][3 4]
+
+print(a)
+
+{
+	let a = [0 0][0 0]
+	print(a)
+	a = [9 8][7 6]
+	print(a)
+
+	{
+		print(a)
+		let c = 5
+		print(c)
+	}
+
+	print(a)
+}
+
+print(a)
