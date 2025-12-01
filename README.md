@@ -19,9 +19,7 @@ while i <= 3 {
     let s = M[i 1] + M[i 2] + M[i 3]
 
     if s != 0 {
-        M[i 1] = M[i 1] / s
-        M[i 2] = M[i 2] / s
-        M[i 3] = M[i 3] / s
+        M[i] = M[i] / s
     }
 
     i = i + 1
