@@ -492,6 +492,22 @@ Mx* MxPower(const Mx* left, double right)
 	return mx;
 }
 
+Mx* MxTranspose(const Mx* mx)
+{
+	Mx* result = malloc(sizeof(Mx));
+	result->Height = mx->Width;
+	result->Width = mx->Height;
+	result->Data = malloc(result->Height * result->Width * sizeof(double));
+
+	for (size_t i = 0; i < mx->Height; ++i) {
+		for (size_t j = 0 ; j < mx->Width; ++j) {
+			result->Data[(j * result->Width) + i] = mx->Data[(i * mx->Width) + j];
+		}
+	}
+
+	return result;
+}
+
 Mx* MxNegate(const Mx* mx)
 {
 	Mx* result = malloc(sizeof(Mx));
@@ -774,6 +790,16 @@ Mx* ASTNodeEval(ASTNode* node)
 	}
 	case Unary: {
 		Mx* operand = ASTNodeEval(node->Data.Unary.Operand);
+
+		switch (node->Data.Unary.Operator->Type) {
+		case TokenMinus:
+			return MxNegate(operand);
+		case TokenApostrophe:
+			return MxTranspose(operand);
+		default:
+			printf("Invalid unary operator!\n");
+			exit(1);
+		}
 
 		return MxNegate(operand);
 	}
@@ -1767,8 +1793,9 @@ void Scan()
 				if (g_scanner.Source[g_scanner.LexemeCurrent] == '.' && isdigit(g_scanner.Source[g_scanner.LexemeCurrent + 1])) {
 					++g_scanner.LexemeCurrent;
 
-					while (isdigit(g_scanner.Source[g_scanner.LexemeCurrent++]))
-						;
+					while (isdigit(g_scanner.Source[g_scanner.LexemeCurrent])) {
+						++g_scanner.LexemeCurrent;
+					}
 				}
 
 				char* lexeme = malloc(g_scanner.LexemeCurrent - g_scanner.LexemeStart + 1);

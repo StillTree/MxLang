@@ -1,14 +1,1 @@
-let M: 3x3 = [1 2 3][4 5 6][7 8 9]
-let i = 1
-
-while i <= 3 {
-    let s = M[i 1] + M[i 2] + M[i 3]
-
-    if s != 0 {
-        M[i] = M[i] / s
-    }
-
-    i = i + 1
-}
-
-display(M)
+display(123123123123123.)
