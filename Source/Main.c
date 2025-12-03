@@ -1924,7 +1924,6 @@ int main(int argc, char* argv[])
 
 	printf("\n");
 
-	// TODO: Transpose
 	ASTNodeEval(program);
 
 	return 0;
