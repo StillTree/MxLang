@@ -284,39 +284,6 @@ void MxPrint(const Mx* mx)
 
 Mx* MxAdd(const Mx* left, const Mx* right)
 {
-	if (left->Height == 1 && left->Width == 1) {
-		Mx* result = malloc(sizeof(Mx));
-		result->Data = malloc(right->Width * right->Height * sizeof(double));
-		result->Height = right->Height;
-		result->Width = right->Width;
-		memset(result->Data, 0, result->Height * result->Width * sizeof(double));
-
-		for (size_t i = 0; i < right->Height * right->Width; ++i) {
-			result->Data[i] = left->Data[0] + right->Data[i];
-		}
-
-		return result;
-	}
-
-	if (right->Height == 1 && right->Width == 1) {
-		Mx* result = malloc(sizeof(Mx));
-		result->Data = malloc(left->Width * left->Height * sizeof(double));
-		result->Height = left->Height;
-		result->Width = left->Width;
-		memset(result->Data, 0, result->Height * result->Width * sizeof(double));
-
-		for (size_t i = 0; i < left->Height * left->Width; ++i) {
-			result->Data[i] = left->Data[i] + right->Data[0];
-		}
-
-		return result;
-	}
-
-	if (left->Height != right->Height || left->Width != right->Width) {
-		printf("Incompatible matrix shapes\n");
-		exit(1);
-	}
-
 	Mx* result = malloc(sizeof(Mx));
 	result->Data = malloc(left->Width * left->Height * sizeof(double));
 	result->Height = left->Height;
@@ -332,39 +299,6 @@ Mx* MxAdd(const Mx* left, const Mx* right)
 
 Mx* MxSubtract(const Mx* left, const Mx* right)
 {
-	if (left->Height == 1 && left->Width == 1) {
-		Mx* result = malloc(sizeof(Mx));
-		result->Data = malloc(right->Width * right->Height * sizeof(double));
-		result->Height = right->Height;
-		result->Width = right->Width;
-		memset(result->Data, 0, result->Height * result->Width * sizeof(double));
-
-		for (size_t i = 0; i < right->Height * right->Width; ++i) {
-			result->Data[i] = left->Data[0] - right->Data[i];
-		}
-
-		return result;
-	}
-
-	if (right->Height == 1 && right->Width == 1) {
-		Mx* result = malloc(sizeof(Mx));
-		result->Data = malloc(left->Width * left->Height * sizeof(double));
-		result->Height = left->Height;
-		result->Width = left->Width;
-		memset(result->Data, 0, result->Height * result->Width * sizeof(double));
-
-		for (size_t i = 0; i < left->Height * left->Width; ++i) {
-			result->Data[i] = left->Data[i] - right->Data[0];
-		}
-
-		return result;
-	}
-
-	if (left->Height != right->Height || left->Width != right->Width) {
-		printf("Incompatible matrix shapes\n");
-		exit(1);
-	}
-
 	Mx* result = malloc(sizeof(Mx));
 	result->Data = malloc(left->Width * left->Height * sizeof(double));
 	result->Height = left->Height;
@@ -380,39 +314,6 @@ Mx* MxSubtract(const Mx* left, const Mx* right)
 
 Mx* MxMultiply(const Mx* left, const Mx* right)
 {
-	if (left->Height == 1 && left->Width == 1) {
-		Mx* result = malloc(sizeof(Mx));
-		result->Data = malloc(right->Width * right->Height * sizeof(double));
-		result->Height = right->Height;
-		result->Width = right->Width;
-		memset(result->Data, 0, result->Height * result->Width * sizeof(double));
-
-		for (size_t i = 0; i < right->Height * right->Width; ++i) {
-			result->Data[i] = left->Data[0] * right->Data[i];
-		}
-
-		return result;
-	}
-
-	if (right->Height == 1 && right->Width == 1) {
-		Mx* result = malloc(sizeof(Mx));
-		result->Data = malloc(left->Width * left->Height * sizeof(double));
-		result->Height = left->Height;
-		result->Width = left->Width;
-		memset(result->Data, 0, result->Height * result->Width * sizeof(double));
-
-		for (size_t i = 0; i < left->Height * left->Width; ++i) {
-			result->Data[i] = left->Data[i] * right->Data[0];
-		}
-
-		return result;
-	}
-
-	if (left->Width != right->Height) {
-		printf("Incompatible matrix shapes\n");
-		exit(1);
-	}
-
 	Mx* result = malloc(sizeof(Mx));
 	result->Data = malloc(left->Height * right->Width * sizeof(double));
 	result->Height = left->Height;
@@ -432,39 +333,6 @@ Mx* MxMultiply(const Mx* left, const Mx* right)
 
 Mx* MxDivide(const Mx* left, const Mx* right)
 {
-	if (left->Height == 1 && left->Width == 1) {
-		Mx* result = malloc(sizeof(Mx));
-		result->Data = malloc(right->Width * right->Height * sizeof(double));
-		result->Height = right->Height;
-		result->Width = right->Width;
-		memset(result->Data, 0, result->Height * result->Width * sizeof(double));
-
-		for (size_t i = 0; i < right->Height * right->Width; ++i) {
-			result->Data[i] = left->Data[0] / right->Data[i];
-		}
-
-		return result;
-	}
-
-	if (right->Height == 1 && right->Width == 1) {
-		Mx* result = malloc(sizeof(Mx));
-		result->Data = malloc(left->Width * left->Height * sizeof(double));
-		result->Height = left->Height;
-		result->Width = left->Width;
-		memset(result->Data, 0, result->Height * result->Width * sizeof(double));
-
-		for (size_t i = 0; i < left->Height * left->Width; ++i) {
-			result->Data[i] = left->Data[i] / right->Data[0];
-		}
-
-		return result;
-	}
-
-	if (left->Width != right->Height) {
-		printf("Incompatible matrix shapes\n");
-		exit(1);
-	}
-
 	Mx* result = malloc(sizeof(Mx));
 	result->Data = malloc(left->Height * right->Width * sizeof(double));
 	result->Height = left->Height;
@@ -500,7 +368,7 @@ Mx* MxTranspose(const Mx* mx)
 	result->Data = malloc(result->Height * result->Width * sizeof(double));
 
 	for (size_t i = 0; i < mx->Height; ++i) {
-		for (size_t j = 0 ; j < mx->Width; ++j) {
+		for (size_t j = 0; j < mx->Width; ++j) {
 			result->Data[(j * result->Width) + i] = mx->Data[(i * mx->Width) + j];
 		}
 	}
@@ -525,11 +393,6 @@ Mx* MxNegate(const Mx* mx)
 
 Mx* MxGreater(const Mx* left, const Mx* right)
 {
-	if (left->Height != right->Height || left->Width != right->Width) {
-		printf("Incompatible matrix shapes\n");
-		exit(1);
-	}
-
 	Mx* result = malloc(sizeof(Mx));
 	result->Data = malloc(sizeof(double));
 	result->Data[0] = 1;
@@ -548,11 +411,6 @@ Mx* MxGreater(const Mx* left, const Mx* right)
 
 Mx* MxGreaterEqual(const Mx* left, const Mx* right)
 {
-	if (left->Height != right->Height || left->Width != right->Width) {
-		printf("Incompatible matrix shapes\n");
-		exit(1);
-	}
-
 	Mx* result = malloc(sizeof(Mx));
 	result->Data = malloc(sizeof(double));
 	result->Data[0] = 1;
@@ -571,11 +429,6 @@ Mx* MxGreaterEqual(const Mx* left, const Mx* right)
 
 Mx* MxLess(const Mx* left, const Mx* right)
 {
-	if (left->Height != right->Height || left->Width != right->Width) {
-		printf("Incompatible matrix shapes\n");
-		exit(1);
-	}
-
 	Mx* result = malloc(sizeof(Mx));
 	result->Data = malloc(sizeof(double));
 	result->Data[0] = 1;
@@ -594,11 +447,6 @@ Mx* MxLess(const Mx* left, const Mx* right)
 
 Mx* MxLessEqual(const Mx* left, const Mx* right)
 {
-	if (left->Height != right->Height || left->Width != right->Width) {
-		printf("Incompatible matrix shapes\n");
-		exit(1);
-	}
-
 	Mx* result = malloc(sizeof(Mx));
 	result->Data = malloc(sizeof(double));
 	result->Data[0] = 1;
@@ -617,11 +465,6 @@ Mx* MxLessEqual(const Mx* left, const Mx* right)
 
 Mx* MxEqualEqual(const Mx* left, const Mx* right)
 {
-	if (left->Height != right->Height || left->Width != right->Width) {
-		printf("Incompatible matrix shapes\n");
-		exit(1);
-	}
-
 	Mx* result = malloc(sizeof(Mx));
 	result->Data = malloc(sizeof(double));
 	result->Data[0] = 1;
@@ -640,11 +483,6 @@ Mx* MxEqualEqual(const Mx* left, const Mx* right)
 
 Mx* MxNotEqual(const Mx* left, const Mx* right)
 {
-	if (left->Height != right->Height || left->Width != right->Width) {
-		printf("Incompatible matrix shapes\n");
-		exit(1);
-	}
-
 	Mx* result = malloc(sizeof(Mx));
 	result->Data = malloc(sizeof(double));
 	result->Data[0] = 1;
@@ -716,6 +554,349 @@ Mx* MxLogicalAnd(const Mx* left, const Mx* right)
 	return result;
 }
 
+typedef struct MxShape {
+	size_t Height;
+	size_t Width;
+} MxShape;
+
+typedef struct VarType {
+	const char* Name;
+	MxShape* ValueType;
+	bool IsConst;
+} VarType;
+
+typedef struct EnvType {
+	struct EnvType* Parent;
+	VarType* Vars;
+	size_t VarCount;
+	size_t NextFreeVar;
+} EnvType;
+
+EnvType* g_currentEnvType = nullptr;
+
+VarType* EnvTypeGetVarType(EnvType* env, const char* name)
+{
+	for (size_t i = 0; i < env->VarCount; ++i) {
+		if (strcmp(env->Vars[i].Name, name) == 0) {
+			return env->Vars + i;
+		}
+	}
+
+	if (env->Parent) {
+		return EnvTypeGetVarType(env->Parent, name);
+	}
+
+	return nullptr;
+}
+
+VarType* EnvTypeGetVarTypeNoParent(EnvType* env, const char* name)
+{
+	for (size_t i = 0; i < env->VarCount; ++i) {
+		if (strcmp(env->Vars[i].Name, name) == 0) {
+			return env->Vars + i;
+		}
+	}
+
+	return nullptr;
+}
+
+MxShape* ProcessVarType(const char* type)
+{
+	size_t heightEnd = 0;
+	while (isdigit(type[heightEnd])) {
+		++heightEnd;
+	}
+
+	size_t widthBegin = heightEnd + 1;
+	size_t widthEnd = widthBegin;
+
+	while (isdigit(type[widthEnd])) {
+		++widthEnd;
+	}
+
+	char* heightStr = malloc((heightEnd + 1) * sizeof(char));
+	heightStr[heightEnd] = '\0';
+	memcpy(heightStr, type, heightEnd);
+
+	char* widthStr = malloc((widthEnd - widthBegin + 1) * sizeof(char));
+	widthStr[widthEnd - widthBegin] = '\0';
+	memcpy(widthStr, type + widthBegin, widthEnd - widthBegin);
+
+	MxShape* result = malloc(sizeof(MxShape));
+	result->Height = (size_t)atoll(heightStr);
+	result->Width = (size_t)atoll(widthStr);
+
+	return result;
+}
+
+MxShape* ASTTypeEval(ASTNode* node)
+{
+	switch (node->Type) {
+	case Number: {
+		MxShape* result = malloc(sizeof(MxShape));
+		result->Height = 1;
+		result->Width = 1;
+
+		return result;
+	}
+	case Literal: {
+		MxShape* result = malloc(sizeof(MxShape));
+		result->Height = node->Data.Literal.Height;
+		result->Width = node->Data.Literal.Width;
+
+		return result;
+	}
+	case Block: {
+		EnvType* temp = g_currentEnvType;
+		g_currentEnvType = malloc(sizeof(EnvType));
+		g_currentEnvType->Vars = malloc(64 * sizeof(VarType));
+		g_currentEnvType->VarCount = 0;
+		g_currentEnvType->NextFreeVar = 0;
+		g_currentEnvType->Parent = temp;
+
+		for (size_t i = 0; i < node->Data.Block.NodeCount; ++i) {
+			ASTTypeEval(node->Data.Block.Nodes[i]);
+		}
+
+		g_currentEnvType = temp;
+		return nullptr;
+	}
+	case Unary: {
+		MxShape* operand = ASTTypeEval(node->Data.Unary.Operand);
+
+		MxShape* result = malloc(sizeof(MxShape));
+
+		switch (node->Data.Unary.Operator->Type) {
+		case TokenMinus:
+			result->Height = operand->Height;
+			result->Width = operand->Width;
+			return result;
+		case TokenApostrophe:
+			result->Height = operand->Width;
+			result->Width = operand->Height;
+			return result;
+		default:
+			printf("Invalid unary operator!\n");
+			exit(1);
+		}
+	}
+	case Grouping:
+		return ASTTypeEval(node->Data.Grouping.Expression);
+	case Binary: {
+		MxShape* left = ASTTypeEval(node->Data.Binary.Left);
+		MxShape* right = ASTTypeEval(node->Data.Binary.Right);
+
+		switch (node->Data.Binary.Operator->Type) {
+		case TokenPlus:
+		case TokenMinus:
+			if (left->Height == right->Height && left->Width == right->Width) {
+				MxShape* result = malloc(sizeof(MxShape));
+				result->Height = left->Height;
+				result->Width = left->Width;
+				return result;
+			} else if (left->Height == 1 && left->Width == 1) {
+				MxShape* result = malloc(sizeof(MxShape));
+				result->Height = right->Height;
+				result->Width = right->Width;
+				return result;
+			} else if (right->Height == 1 && right->Width == 1) {
+				MxShape* result = malloc(sizeof(MxShape));
+				result->Height = left->Height;
+				result->Width = left->Width;
+				return result;
+			} else {
+				printf("Incompatible matrix shapes!\n");
+				exit(1);
+			}
+		case TokenStar:
+		case TokenSlash:
+			if (left->Width == right->Height) {
+				MxShape* result = malloc(sizeof(MxShape));
+				result->Height = left->Height;
+				result->Width = right->Width;
+				return result;
+			} else if (left->Height == 1 && left->Width == 1) {
+				MxShape* result = malloc(sizeof(MxShape));
+				result->Height = right->Height;
+				result->Width = right->Width;
+				return result;
+			} else if (right->Height == 1 && right->Width == 1) {
+				MxShape* result = malloc(sizeof(MxShape));
+				result->Height = left->Height;
+				result->Width = left->Width;
+				return result;
+			} else {
+				printf("Incompatible matrix shapes!\n");
+				exit(1);
+			}
+		case TokenUpArrow:
+			if (right->Height != 1 || right->Width != 1) {
+				printf("Invalid matrix right operand for powering!\n");
+				exit(1);
+			} else {
+				MxShape* result = malloc(sizeof(MxShape));
+				result->Height = left->Height;
+				result->Width = left->Width;
+				return result;
+			}
+		case TokenGreater:
+		case TokenGreaterEqual:
+		case TokenLess:
+		case TokenLessEqual:
+		case TokenEqualEqual:
+		case TokenNotEqual:
+			if (left->Height == right->Height && left->Width == right->Width) {
+				MxShape* result = malloc(sizeof(MxShape));
+				result->Height = 1;
+				result->Width = 1;
+				return result;
+			} else {
+				printf("Incompatible matrix shapes!\n");
+				exit(1);
+			}
+		case TokenOr: {
+			MxShape* result = malloc(sizeof(MxShape));
+			result->Height = 1;
+			result->Width = 1;
+			return result;
+		}
+		default:
+			printf("Error: Unknown binary operator '%s'!\n", node->Data.Binary.Operator->Lexeme);
+			exit(1);
+		}
+	}
+	case IfStmt: {
+		ASTTypeEval(node->Data.IfStmt.Condition);
+		ASTTypeEval(node->Data.IfStmt.ThenBlock);
+
+		if (node->Data.IfStmt.ElseBlock) {
+			ASTTypeEval(node->Data.IfStmt.ElseBlock);
+		}
+
+		return nullptr;
+	}
+	case WhileStmt: {
+		ASTTypeEval(node->Data.WhileStmt.Condition);
+		ASTTypeEval(node->Data.WhileStmt.Body);
+
+		return nullptr;
+	}
+	case VarDecl: {
+		if (!node->Data.VarDecl.Expression) {
+			printf("Variable '%s' has not been initialized!\n", node->Data.VarDecl.Identifier->Lexeme);
+			exit(1);
+		}
+
+		if (EnvTypeGetVarTypeNoParent(g_currentEnvType, node->Data.VarDecl.Identifier->Lexeme)) {
+			printf("Variable '%s' has already been declared in the current scope!\n", node->Data.VarDecl.Identifier->Lexeme);
+			exit(1);
+		}
+
+		size_t i = g_currentEnvType->NextFreeVar++;
+		g_currentEnvType->Vars[i].Name = node->Data.VarDecl.Identifier->Lexeme;
+		g_currentEnvType->Vars[i].ValueType = ASTTypeEval(node->Data.VarDecl.Expression);
+		g_currentEnvType->Vars[i].IsConst = node->Data.VarDecl.IsConst;
+		g_currentEnvType->VarCount++;
+
+		if (node->Data.VarDecl.Type) {
+			MxShape* type = ProcessVarType(node->Data.VarDecl.Type->Lexeme);
+
+			if (type->Height != g_currentEnvType->Vars[i].ValueType->Height || type->Width != g_currentEnvType->Vars[i].ValueType->Width) {
+				printf("Variable declaration has different explicitly declared type than initializer!\n");
+				exit(1);
+			}
+		}
+
+		return nullptr;
+	}
+	case Assignment: {
+		MxShape* newValueType = ASTTypeEval(node->Data.Assignment.Expression);
+		if (!newValueType) {
+			printf("Expression does not return a value!\n");
+			exit(1);
+		}
+
+		VarType* var = EnvTypeGetVarType(g_currentEnvType, node->Data.Assignment.Identifier->Lexeme);
+		if (!var) {
+			printf("Undeclared variable '%s'!\n", node->Data.Assignment.Identifier->Lexeme);
+			exit(1);
+		}
+
+		if (var->IsConst) {
+			printf("Attempted assignment to const variable '%s'!\n", node->Data.Assignment.Identifier->Lexeme);
+			exit(1);
+		}
+
+		if (node->Data.Assignment.Index) {
+			if (!node->Data.Assignment.Index->Data.IndexSuffix.J) {
+				if (newValueType->Height != 1 || newValueType->Width != var->ValueType->Width) {
+					printf("Incompatible matrix shapes!\n");
+					exit(1);
+				}
+			} else {
+				if (newValueType->Height != 1 || newValueType->Width != 1) {
+					printf("Incompatible matrix shapes!\n");
+					exit(1);
+				}
+			}
+		} else {
+			if (newValueType->Height != var->ValueType->Height || newValueType->Width != var->ValueType->Width) {
+				printf("Incompatible matrix shapes!\n");
+				exit(1);
+			}
+		}
+
+		return nullptr;
+	}
+	case FunctionCall:
+		// Only print is implemented for now, the other functions don't really make sense without a static type checker
+		if (strcmp(node->Data.FunctionCall.Identifier->Lexeme, "display") != 0) {
+			printf("Unimplemented function '%s'!\n", node->Data.FunctionCall.Identifier->Lexeme);
+			exit(1);
+		}
+
+		if (node->Data.FunctionCall.ArgCount < 1) {
+			printf("Invalid print usage, requires at least one argument!\n");
+			exit(1);
+		}
+
+		for (size_t i = 0; i < node->Data.FunctionCall.ArgCount; ++i) {
+			ASTTypeEval(node->Data.FunctionCall.CallArgs[i]);
+		}
+
+		return nullptr;
+	case Identifier: {
+		VarType* varType = EnvTypeGetVarType(g_currentEnvType, node->Data.Identifier.Identifier->Lexeme);
+		if (!varType) {
+			printf("Undeclared variable '%s'!\n", node->Data.Identifier.Identifier->Lexeme);
+			exit(1);
+		}
+
+		if (node->Data.Identifier.Index) {
+			if (!node->Data.Identifier.Index->Data.IndexSuffix.J) {
+				MxShape* result = malloc(sizeof(MxShape));
+				result->Height = 1;
+				result->Width = varType->ValueType->Width;
+				return result;
+			} else {
+				MxShape* result = malloc(sizeof(MxShape));
+				result->Height = 1;
+				result->Width = 1;
+				return result;
+			}
+		} else {
+			MxShape* result = malloc(sizeof(MxShape));
+			result->Height = varType->ValueType->Height;
+			result->Width = varType->ValueType->Width;
+			return result;
+		}
+	}
+	default:
+		printf("Error: Unimplemented ASTNode type %u!\n", node->Type);
+		exit(1);
+	}
+}
+
 typedef struct Var {
 	const char* Name;
 	Mx* Value;
@@ -778,11 +959,6 @@ Mx* ASTNodeEval(ASTNode* node)
 		for (size_t i = 0; i < result->Height * result->Width; ++i) {
 			// This must be a single number
 			Mx* number = ASTNodeEval(node->Data.Literal.Matrix[i]);
-			if (number->Height != 1 || number->Width != 1) {
-				printf("Everything inside a matrix must evaluate to a single number!\n");
-				exit(1);
-			}
-
 			result->Data[i] = number->Data[0];
 		}
 
@@ -800,8 +976,6 @@ Mx* ASTNodeEval(ASTNode* node)
 			printf("Invalid unary operator!\n");
 			exit(1);
 		}
-
-		return MxNegate(operand);
 	}
 	case Grouping:
 		return ASTNodeEval(node->Data.Grouping.Expression);
@@ -819,10 +993,6 @@ Mx* ASTNodeEval(ASTNode* node)
 		case TokenSlash:
 			return MxDivide(left, right);
 		case TokenUpArrow:
-			if (right->Height != 1 || right->Width != 1) {
-				printf("Invalid matrix right operand for powering!\n");
-				exit(1);
-			}
 			return MxPower(left, right->Data[0]);
 		case TokenGreater:
 			return MxGreater(left, right);
@@ -880,16 +1050,6 @@ Mx* ASTNodeEval(ASTNode* node)
 		return nullptr;
 	}
 	case VarDecl: {
-		if (!node->Data.VarDecl.Expression) {
-			printf("Variable '%s' has not been initialized!\n", node->Data.VarDecl.Identifier->Lexeme);
-			exit(1);
-		}
-
-		if (EnvGetVarNoParent(g_currentEnv, node->Data.VarDecl.Identifier->Lexeme)) {
-			printf("Variable '%s' has already been declared in the current scope!\n", node->Data.VarDecl.Identifier->Lexeme);
-			exit(1);
-		}
-
 		size_t i = g_currentEnv->NextFreeVar++;
 		g_currentEnv->Vars[i].Name = node->Data.VarDecl.Identifier->Lexeme;
 		g_currentEnv->Vars[i].Value = ASTNodeEval(node->Data.VarDecl.Expression);
@@ -906,15 +1066,6 @@ Mx* ASTNodeEval(ASTNode* node)
 		}
 
 		Var* var = EnvGetVar(g_currentEnv, node->Data.Assignment.Identifier->Lexeme);
-		if (!var) {
-			printf("Undeclared variable '%s'!\n", node->Data.Assignment.Identifier->Lexeme);
-			exit(1);
-		}
-
-		if (var->IsConst) {
-			printf("Attempted assignment to const variable '%s'!\n", node->Data.Assignment.Identifier->Lexeme);
-			exit(1);
-		}
 
 		if (node->Data.Assignment.Index) {
 			Mx* mxI = ASTNodeEval(node->Data.Assignment.Index->Data.IndexSuffix.I);
@@ -932,17 +1083,7 @@ Mx* ASTNodeEval(ASTNode* node)
 				}
 				size_t j = (size_t)mxJ->Data[0];
 
-				if (newValue->Height > 1 || newValue->Width > 1) {
-					printf("Only numbers can be assigned to a matrix's cell!\n");
-					exit(1);
-				}
-
 				var->Value->Data[((i - 1) * var->Value->Width) + j - 1] = newValue->Data[0];
-			}
-
-			if (newValue->Height > 1 || newValue->Width != var->Value->Width) {
-				printf("Index and matrix assignment size mismatch!\n");
-				exit(1);
 			}
 
 			memcpy(var->Value->Data + ((i - 1) * var->Value->Width), newValue->Data, newValue->Width * sizeof(double));
@@ -952,17 +1093,6 @@ Mx* ASTNodeEval(ASTNode* node)
 		return nullptr;
 	}
 	case FunctionCall: {
-		// Only print is implemented for now, the other functions don't really make sense without a static type checker
-		if (strcmp(node->Data.FunctionCall.Identifier->Lexeme, "display") != 0) {
-			printf("Unimplemented function '%s'!\n", node->Data.FunctionCall.Identifier->Lexeme);
-			exit(1);
-		}
-
-		if (node->Data.FunctionCall.ArgCount < 1) {
-			printf("Invalid print usage, requires at least one argument!\n");
-			exit(1);
-		}
-
 		for (size_t i = 0; i < node->Data.FunctionCall.ArgCount; ++i) {
 			if (node->Data.FunctionCall.CallArgs[i]->Type == Identifier) {
 				printf("%s: ", node->Data.FunctionCall.CallArgs[i]->Data.Identifier.Identifier->Lexeme);
@@ -982,10 +1112,6 @@ Mx* ASTNodeEval(ASTNode* node)
 	}
 	case Identifier: {
 		Var* var = EnvGetVar(g_currentEnv, node->Data.Identifier.Identifier->Lexeme);
-		if (!var) {
-			printf("Undeclared variable '%s'!\n", node->Data.Assignment.Identifier->Lexeme);
-			exit(1);
-		}
 
 		if (node->Data.Identifier.Index) {
 			Mx* mxI = ASTNodeEval(node->Data.Identifier.Index->Data.IndexSuffix.I);
@@ -1922,7 +2048,11 @@ int main(int argc, char* argv[])
 
 	ASTNodePrint(program);
 
-	printf("\n");
+	printf("\nType checker:\n");
+
+	ASTTypeEval(program);
+
+	printf("\nInterpreter:\n");
 
 	ASTNodeEval(program);
 
