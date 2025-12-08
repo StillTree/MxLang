@@ -78,6 +78,8 @@ if s > 15 {
 
 ## EBNF
 
+The formal context-free grammar for Mx.
+
 ```ebnf
 program      ::= statement* EOF
 
