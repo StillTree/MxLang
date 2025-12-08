@@ -4,9 +4,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-static Result ArenaBlockNew(ArenaBlock** block, usz elemSizeBytes)
+static Result ArenaBlockNew(ArenaBlock** block)
 {
-	usz blockSize = sizeof(ArenaBlock) + (elemSizeBytes * ARENA_BLOCK_DEFAULT_ELEM_CAPACITY);
+	usz blockSize = sizeof(ArenaBlock) + ARENA_BLOCK_DEFAULT_CAPACITY;
 
 	*block = malloc(blockSize);
 
@@ -14,11 +14,11 @@ static Result ArenaBlockNew(ArenaBlock** block, usz elemSizeBytes)
 		return ResErr;
 	}
 
-	(*block)->Next = nullptr;
-	(*block)->ElemCapacity = ARENA_BLOCK_DEFAULT_ELEM_CAPACITY;
-	(*block)->ElemNext = 0;
+	(*block)->NextBlock = nullptr;
+	(*block)->CapacityBytes = blockSize;
+	(*block)->NextBytes = (*block)->Data;
 
-	// printf("New block! capacity = %lu addr = %p\n", (*block)->ElemCapacity, (void*)*block);
+	// printf("New block! capacity = %lu addr = %p\n", (*block)->CapacityBytes, (void*)*block);
 
 	return ResOk;
 }
@@ -30,27 +30,20 @@ static void ArenaBlockFreeChain(ArenaBlock* block)
 	}
 
 	while (block) {
-		ArenaBlock* next = block->Next;
+		ArenaBlock* next = block->NextBlock;
 		free(block);
 		// printf("Freed block! addr = %p\n", (void*)block);
 		block = next;
 	}
 }
 
-Result ArenaInit(Arena* arena, usz elemSizeBytes)
+Result ArenaInit(Arena* arena)
 {
 	if (!arena) {
 		return ResErr;
 	}
 
-	if (elemSizeBytes <= 0) {
-		return ResErr;
-	}
-
-	arena->ElemSizeBytes = elemSizeBytes;
-	arena->BlockCount = 1;
-
-	return ArenaBlockNew(&arena->Blocks, elemSizeBytes);
+	return ArenaBlockNew(&arena->Blocks);
 }
 
 Result ArenaMarkSet(Arena* arena, ArenaMark* mark)
@@ -61,23 +54,23 @@ Result ArenaMarkSet(Arena* arena, ArenaMark* mark)
 
 	ArenaBlock* tail = arena->Blocks;
 	// An arena will always have at least one block with free memory available, so this is safe
-	while (tail->Next) {
-		tail = tail->Next;
+	while (tail->NextBlock) {
+		tail = tail->NextBlock;
 	}
 
-	if (tail->ElemNext >= tail->ElemCapacity) {
-		Result result = ArenaBlockNew(&tail->Next, arena->ElemSizeBytes);
+	if (tail->NextBytes >= tail->Data + tail->CapacityBytes) {
+		Result result = ArenaBlockNew(&tail->NextBlock);
 		if (result) {
 			return result;
 		}
 
-		tail = tail->Next;
+		tail = tail->NextBlock;
 	}
 
 	mark->Blocks = tail;
-	mark->ElemMark = tail->ElemNext;
+	mark->ByteMark = tail->NextBytes;
 
-	// printf("Mark set! block addr = %p, elem mark = %lu\n", (void*)mark->Blocks, mark->ElemMark);
+	// printf("Mark set! block addr = %p, byte mark = %p\n", (void*)mark->Blocks, mark->ByteMark);
 
 	return ResOk;
 }
@@ -88,57 +81,57 @@ Result ArenaMarkUndo(Arena* arena, ArenaMark* mark)
 		return ResErr;
 	}
 
-	ArenaBlockFreeChain(mark->Blocks->Next);
+	ArenaBlockFreeChain(mark->Blocks->NextBlock);
 
-	mark->Blocks->ElemNext = mark->ElemMark;
-	mark->Blocks->Next = nullptr;
+	mark->Blocks->NextBytes = mark->ByteMark;
+	mark->Blocks->NextBlock = nullptr;
 
-	// printf("Mark undid! new arena tail = %p, new elem next = %lu\n", (void*)mark->Blocks, mark->Blocks->ElemNext);
+	// printf("Mark undid! new arena tail = %p, bytes next = %p\n", (void*)mark->Blocks, mark->Blocks->NextBytes);
 
 	return ResOk;
 }
 
-Result ArenaAlloc(Arena* arena, void** buffer)
+Result ArenaAlloc(Arena* arena, void** buffer, usz size)
 {
-	if (!arena) {
+	if (!arena || !buffer || size <= 0) {
 		return ResErr;
 	}
 
 	ArenaBlock* tail = arena->Blocks;
 	// An arena will always have at least one block with free memory available, so this is safe
-	while (tail->Next) {
-		tail = tail->Next;
+	while (tail->NextBlock) {
+		tail = tail->NextBlock;
 	}
 
-	if (tail->ElemNext < tail->ElemCapacity) {
-		*buffer = tail->Data + (tail->ElemNext * arena->ElemSizeBytes);
-		++tail->ElemNext;
+	if (tail->NextBytes + size <= tail->Data + tail->CapacityBytes) {
+		*buffer = tail->NextBytes;
+		tail->NextBytes += size;
 
-		// printf("Allocation! new elem next = %lu, from block = %p\n", tail->ElemNext, (void*)tail);
+		// printf("Allocation! next bytes = %p, from block = %p\n", tail->NextBytes, (void*)tail);
 		return ResOk;
 	}
 
-	Result result = ArenaBlockNew(&tail->Next, arena->ElemSizeBytes);
+	Result result = ArenaBlockNew(&tail->NextBlock);
 	if (result) {
 		return result;
 	}
 
-	tail = tail->Next;
-	*buffer = tail->Data + (tail->ElemNext * arena->ElemSizeBytes);
-	++tail->ElemNext;
-	// printf("Allocation! new elem next = %lu, from block = %p\n", tail->ElemNext, (void*)tail);
+	tail = tail->NextBlock;
+	*buffer = tail->NextBytes;
+	tail->NextBytes += size;
+	// printf("Allocation! next bytes = %p, from block = %p\n", tail->NextBytes, (void*)tail);
 
 	return ResOk;
 }
 
-Result ArenaAllocZeroed(Arena* arena, void** buffer)
+Result ArenaAllocZeroed(Arena* arena, void** buffer, usz size)
 {
-	Result result = ArenaAlloc(arena, buffer);
+	Result result = ArenaAlloc(arena, buffer, size);
 	if (result) {
 		return result;
 	}
 
-	memset(*buffer, 0, arena->ElemSizeBytes);
+	memset(*buffer, 0, size);
 	return ResOk;
 }
 
@@ -151,8 +144,6 @@ Result ArenaDeinit(Arena* arena)
 	ArenaBlockFreeChain(arena->Blocks);
 
 	arena->Blocks = nullptr;
-	arena->BlockCount = 0;
-	arena->ElemSizeBytes = 0;
 
 	return ResOk;
 }

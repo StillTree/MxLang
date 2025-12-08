@@ -3,30 +3,28 @@
 #include "Types.h"
 #include "Result.h"
 
-constexpr usz ARENA_BLOCK_DEFAULT_ELEM_CAPACITY = 4;
+constexpr usz ARENA_BLOCK_DEFAULT_CAPACITY = 64;
 
 typedef struct ArenaBlock {
-	struct ArenaBlock* Next;
-	usz ElemCapacity;
-	usz ElemNext;
+	struct ArenaBlock* NextBlock;
+	usz CapacityBytes;
+	u8* NextBytes;
 	u8 Data[];
 } ArenaBlock;
 
 typedef struct ArenaMark {
 	ArenaBlock* Blocks;
 	// "Points" to the first block
-	usz ElemMark;
+	u8* ByteMark;
 } ArenaMark;
 
 typedef struct Arena {
 	ArenaBlock* Blocks;
-	usz BlockCount;
-	usz ElemSizeBytes;
 } Arena;
 
-Result ArenaInit(Arena* arena, usz elemSizeBytes);
-Result ArenaAlloc(Arena* arena, void** buffer);
-Result ArenaAllocZeroed(Arena* arena, void** buffer);
+Result ArenaInit(Arena* arena);
+Result ArenaAlloc(Arena* arena, void** buffer, usz size);
+Result ArenaAllocZeroed(Arena* arena, void** buffer, usz size);
 Result ArenaMarkSet(Arena* arena, ArenaMark* mark);
 Result ArenaMarkUndo(Arena* arena, ArenaMark* mark);
 Result ArenaDeinit(Arena* arena);
