@@ -3,7 +3,7 @@
 #include "Types.h"
 #include "Result.h"
 
-constexpr usz ARENA_BLOCK_DEFAULT_CAPACITY = 64;
+constexpr usz ARENA_BLOCK_DEFAULT_CAPACITY = 1024;
 
 typedef struct ArenaBlock {
 	struct ArenaBlock* NextBlock;
