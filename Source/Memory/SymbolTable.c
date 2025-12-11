@@ -21,11 +21,15 @@ static u64 HashString(const char* str)
 
 static Result SymbolTableExpand(SymbolTable* table)
 {
+	if (!table) {
+		return ResInvalidParams;
+	}
+
 	usz oldCapacity = table->Capacity;
 	table->Capacity *= 2;
 	SymbolTableEntry** newEntries = (SymbolTableEntry**)calloc(table->Capacity, sizeof(SymbolTableEntry*));
 	if (!newEntries) {
-		return ResErr;
+		return ResOutOfMemory;
 	}
 
 	for (usz i = 0; i < oldCapacity; ++i) {
@@ -50,6 +54,10 @@ static Result SymbolTableExpand(SymbolTable* table)
 
 Result SymbolTableInit(SymbolTable* table)
 {
+	if (!table) {
+		return ResInvalidParams;
+	}
+
 	Result result = ArenaInit(&table->Arena);
 	if (result) {
 		return result;
@@ -68,6 +76,10 @@ Result SymbolTableInit(SymbolTable* table)
 
 Result SymbolTableContains(SymbolTable* table, const char* key)
 {
+	if (!table || !key) {
+		return ResInvalidParams;
+	}
+
 	u64 hash = HashString(key);
 	u64 i = hash & (table->Capacity - 1);
 
@@ -79,11 +91,15 @@ Result SymbolTableContains(SymbolTable* table, const char* key)
 		i = (i + 1) & (table->Capacity - 1);
 	}
 
-	return ResErr;
+	return ResNotFound;
 }
 
 Result SymbolTableAdd(SymbolTable* table, const char* key, const char** internedPtr)
 {
+	if (!table || !key) {
+		return ResInvalidParams;
+	}
+
 	// We expand the table when we filled it up to 75%
 	if ((table->EntryCount + 1) * 100 / table->Capacity > 75) {
 		Result result = SymbolTableExpand(table);
@@ -124,6 +140,10 @@ Result SymbolTableAdd(SymbolTable* table, const char* key, const char** interned
 
 Result SymbolTableDeinit(SymbolTable* table)
 {
+	if (!table) {
+		return ResInvalidParams;
+	}
+
 	free((void*)table->Entries);
 	table->Capacity = 0;
 	table->EntryCount = 0;

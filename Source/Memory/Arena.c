@@ -11,7 +11,7 @@ static Result ArenaBlockNew(ArenaBlock** block)
 	*block = malloc(blockSize);
 
 	if (!*block) {
-		return ResErr;
+		return ResOutOfMemory;
 	}
 
 	(*block)->NextBlock = nullptr;
@@ -40,7 +40,7 @@ static void ArenaBlockFreeChain(ArenaBlock* block)
 Result ArenaInit(Arena* arena)
 {
 	if (!arena) {
-		return ResErr;
+		return ResInvalidParams;
 	}
 
 	return ArenaBlockNew(&arena->Blocks);
@@ -49,7 +49,7 @@ Result ArenaInit(Arena* arena)
 Result ArenaMarkSet(Arena* arena, ArenaMark* mark)
 {
 	if (!arena || !mark) {
-		return ResErr;
+		return ResInvalidParams;
 	}
 
 	ArenaBlock* tail = arena->Blocks;
@@ -78,7 +78,7 @@ Result ArenaMarkSet(Arena* arena, ArenaMark* mark)
 Result ArenaMarkUndo(Arena* arena, ArenaMark* mark)
 {
 	if (!arena || !mark) {
-		return ResErr;
+		return ResInvalidParams;
 	}
 
 	ArenaBlockFreeChain(mark->Blocks->NextBlock);
@@ -94,7 +94,7 @@ Result ArenaMarkUndo(Arena* arena, ArenaMark* mark)
 Result ArenaAlloc(Arena* arena, void** buffer, usz size)
 {
 	if (!arena || !buffer || size <= 0) {
-		return ResErr;
+		return ResInvalidParams;
 	}
 
 	ArenaBlock* tail = arena->Blocks;
@@ -109,6 +109,11 @@ Result ArenaAlloc(Arena* arena, void** buffer, usz size)
 
 		// printf("Allocation! next bytes = %p, from block = %p\n", tail->NextBytes, (void*)tail);
 		return ResOk;
+	}
+
+	// TODO: Check if allocation size exceeds block size, then do something
+	if (size > ARENA_BLOCK_DEFAULT_CAPACITY) {
+		return ResUnimplemented;
 	}
 
 	Result result = ArenaBlockNew(&tail->NextBlock);
@@ -138,7 +143,7 @@ Result ArenaAllocZeroed(Arena* arena, void** buffer, usz size)
 Result ArenaDeinit(Arena* arena)
 {
 	if (!arena) {
-		return ResErr;
+		return ResInvalidParams;
 	}
 
 	ArenaBlockFreeChain(arena->Blocks);
