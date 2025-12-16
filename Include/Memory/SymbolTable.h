@@ -5,6 +5,7 @@
 
 typedef struct SymbolTableEntry {
 	u64 Hash;
+	usz KeyLength;
 	char Key[];
 } SymbolTableEntry;
 
@@ -18,6 +19,6 @@ typedef struct SymbolTable {
 
 Result SymbolTableInit(SymbolTable* table);
 /// Returns `ResOk` when found and `ResErr` when not.
-Result SymbolTableContains(SymbolTable* table, const char* key);
-Result SymbolTableAdd(SymbolTable* table, const char* key, const char** internedPtr);
+Result SymbolTableContains(SymbolTable* table, const char* key, usz keyLength);
+Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, const char** internedPtr);
 Result SymbolTableDeinit(SymbolTable* table);

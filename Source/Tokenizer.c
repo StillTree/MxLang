@@ -6,9 +6,17 @@
 
 Tokenizer g_tokenizer = { 0 };
 
-static char TokenizerConsume() { return *g_tokenizer.LexemeCurrent++; }
+static char TokenizerConsume()
+{
+	++g_tokenizer.SourceLinePos;
+	return *g_tokenizer.LexemeCurrent++;
+}
 
-static void TokenizerAdvance() { g_tokenizer.LexemeCurrent++; }
+static void TokenizerAdvance()
+{
+	++g_tokenizer.SourceLinePos;
+	g_tokenizer.LexemeCurrent++;
+}
 
 static char TokenizerPeek(usz lookahead)
 {
@@ -31,7 +39,47 @@ static bool TokenizerMatch(char expected)
 	return true;
 }
 
-static void TokenizerAddToken(TokenType t, double d) { }
+static Result TokenizerAddToken(TokenType type, const char* lexeme, double number)
+{
+	Token* token;
+	Result result = ArenaAlloc(&g_tokenizer.ArenaTokens, (void**)&token, sizeof(Token));
+	if (!result) {
+		return result;
+	}
+
+	token->SourceLinePos = g_tokenizer.SourceLinePos;
+	token->SourceLine = g_tokenizer.SourceLine;
+	token->Type = type;
+
+	if (type == TokenNumber) {
+		token->Number = number;
+	} else {
+		token->Lexeme = lexeme;
+	}
+
+	return ResOk;
+}
+
+inline static void TokenizerSkipDigit()
+{
+	while (isdigit(TokenizerPeek(0))) {
+		TokenizerAdvance();
+	}
+}
+
+inline static void TokenizerSkipAlpha()
+{
+	while (isalpha(TokenizerPeek(0))) {
+		TokenizerAdvance();
+	}
+}
+
+inline static void TokenizerSkipAlphanumeric()
+{
+	while (isalnum(TokenizerPeek(0))) {
+		TokenizerAdvance();
+	}
+}
 
 Result TokenizerInit(const char* source)
 {
@@ -40,11 +88,18 @@ Result TokenizerInit(const char* source)
 		return result;
 	}
 
+	result = SymbolTableInit(&g_tokenizer.TableStrings);
+	if (result) {
+		ArenaDeinit(&g_tokenizer.ArenaTokens);
+		return result;
+	}
+
 	g_tokenizer.Source = source;
 	g_tokenizer.SourceEnd = source + strlen(source);
 	g_tokenizer.SourceLine = 1;
-	g_tokenizer.LexemeCurrent = source;
+	g_tokenizer.SourceLinePos = 1;
 	g_tokenizer.LexemeStart = source;
+	g_tokenizer.LexemeCurrent = source;
 
 	return ResOk;
 }
@@ -62,64 +117,64 @@ Result TokenizerScan()
 			}
 			break;
 		case '(':
-			TokenizerAddToken(TokenLeftRoundBracket, 0);
+			TokenizerAddToken(TokenLeftRoundBracket, nullptr, 0);
 			break;
 		case ')':
-			TokenizerAddToken(TokenRightRoundBracket, 0);
+			TokenizerAddToken(TokenRightRoundBracket, nullptr, 0);
 			break;
 		case '[':
-			TokenizerAddToken(TokenLeftSquareBracket, 0);
+			TokenizerAddToken(TokenLeftSquareBracket, nullptr, 0);
 			break;
 		case ']':
-			TokenizerAddToken(TokenRightSquareBracket, 0);
+			TokenizerAddToken(TokenRightSquareBracket, nullptr, 0);
 			break;
 		case '<':
 			if (TokenizerMatch('=')) {
-				TokenizerAddToken(TokenLessEqual, 0);
+				TokenizerAddToken(TokenLessEqual, nullptr, 0);
 			} else if (TokenizerMatch('<')) {
-				TokenizerAddToken(TokenLeftVectorBracket, 0);
+				TokenizerAddToken(TokenLeftVectorBracket, nullptr, 0);
 			} else {
-				TokenizerAddToken(TokenLess, 0);
+				TokenizerAddToken(TokenLess, nullptr, 0);
 			}
 			break;
 		case '>':
 			if (TokenizerMatch('=')) {
-				TokenizerAddToken(TokenGreaterEqual, 0);
+				TokenizerAddToken(TokenGreaterEqual, nullptr, 0);
 			} else if (TokenizerMatch('>')) {
-				TokenizerAddToken(TokenRightVectorBracket, 0);
+				TokenizerAddToken(TokenRightVectorBracket, nullptr, 0);
 			} else {
-				TokenizerAddToken(TokenGreater, 0);
+				TokenizerAddToken(TokenGreater, nullptr, 0);
 			}
 			break;
 		case '{':
-			TokenizerAddToken(TokenLeftCurlyBracket, 0);
+			TokenizerAddToken(TokenLeftCurlyBracket, nullptr, 0);
 			break;
 		case '}':
-			TokenizerAddToken(TokenRightCurlyBracket, 0);
+			TokenizerAddToken(TokenRightCurlyBracket, nullptr, 0);
 			break;
 		case ',':
-			TokenizerAddToken(TokenComma, 0);
+			TokenizerAddToken(TokenComma, nullptr, 0);
 			break;
 		case '+':
-			TokenizerAddToken(TokenAdd, 0);
+			TokenizerAddToken(TokenAdd, nullptr, 0);
 			break;
 		case '-':
-			TokenizerAddToken(TokenSubtract, 0);
+			TokenizerAddToken(TokenSubtract, nullptr, 0);
 			break;
 		case '*':
-			TokenizerAddToken(TokenMultiply, 0);
+			TokenizerAddToken(TokenMultiply, nullptr, 0);
 			break;
 		case '/':
-			TokenizerAddToken(TokenDivide, 0);
+			TokenizerAddToken(TokenDivide, nullptr, 0);
 			break;
 		case '^':
-			TokenizerAddToken(TokenToPower, 0);
+			TokenizerAddToken(TokenToPower, nullptr, 0);
 			break;
 		case '\'':
-			TokenizerAddToken(TokenTranspose, 0);
+			TokenizerAddToken(TokenTranspose, nullptr, 0);
 			break;
 		case ':': {
-			TokenizerAddToken(TokenColon, 0);
+			TokenizerAddToken(TokenColon, nullptr, 0);
 
 			while (isspace(TokenizerPeek(0))) {
 				TokenizerAdvance();
@@ -130,23 +185,17 @@ Result TokenizerScan()
 			if (!isdigit(TokenizerConsume())) {
 				// TODO: Error out
 
-				while (isalnum(TokenizerPeek(0))) {
-					TokenizerAdvance();
-				}
+				TokenizerSkipAlphanumeric();
 
 				break;
 			}
 
-			while (isdigit(TokenizerPeek(0))) {
-				TokenizerAdvance();
-			}
+			TokenizerSkipDigit();
 
-			if (TokenizerConsume() != 'x') {
+			if (!TokenizerMatch('x')) {
 				// TODO: Error out
 
-				while (isalnum(TokenizerPeek(0))) {
-					TokenizerAdvance();
-				}
+				TokenizerSkipAlphanumeric();
 
 				break;
 			}
@@ -154,16 +203,12 @@ Result TokenizerScan()
 			if (!isdigit(TokenizerConsume())) {
 				// TODO: Error out
 
-				while (isalnum(TokenizerPeek(0))) {
-					TokenizerAdvance();
-				}
+				TokenizerSkipAlphanumeric();
 
 				break;
 			}
 
-			while (isdigit(TokenizerPeek(0))) {
-				TokenizerAdvance();
-			}
+			TokenizerSkipDigit();
 
 			// TODO: Finish this
 			// char* lexeme = malloc(g_scanner.LexemeCurrent - g_scanner.LexemeStart + 1);
@@ -177,14 +222,14 @@ Result TokenizerScan()
 		} break;
 		case '=':
 			if (TokenizerMatch('=')) {
-				TokenizerAddToken(TokenEqualEqual, 0);
+				TokenizerAddToken(TokenEqualEqual, nullptr, 0);
 			} else {
-				TokenizerAddToken(TokenEqual, 0);
+				TokenizerAddToken(TokenEqual, nullptr, 0);
 			}
 			break;
 		case '!':
 			if (TokenizerMatch('=')) {
-				TokenizerAddToken(TokenNotEqual, 0);
+				TokenizerAddToken(TokenNotEqual, nullptr, 0);
 			} else {
 				// TODO: Error out
 			}
@@ -194,75 +239,68 @@ Result TokenizerScan()
 		case '\t':
 			break;
 		case '\n':
+			g_tokenizer.SourceLinePos = 1;
 			++g_tokenizer.SourceLine;
 			break;
 		default:
 			if (isdigit(c)) {
-				while (isdigit(g_scanner.Source[g_scanner.LexemeCurrent])) {
-					++g_scanner.LexemeCurrent;
+				while (isdigit(TokenizerPeek(0))) {
+					TokenizerAdvance();
 				}
 
-				if (g_scanner.Source[g_scanner.LexemeCurrent] == '.' && isdigit(g_scanner.Source[g_scanner.LexemeCurrent + 1])) {
-					++g_scanner.LexemeCurrent;
-
-					while (isdigit(g_scanner.Source[g_scanner.LexemeCurrent])) {
-						++g_scanner.LexemeCurrent;
-					}
+				if (TokenizerMatch('.') && isdigit(TokenizerPeek(0))) {
+					TokenizerSkipDigit();
 				}
 
-				char* lexeme = malloc(g_scanner.LexemeCurrent - g_scanner.LexemeStart + 1);
-				lexeme[g_scanner.LexemeCurrent - g_scanner.LexemeStart] = '\0';
-				memcpy(lexeme, g_scanner.Source + g_scanner.LexemeStart, g_scanner.LexemeCurrent - g_scanner.LexemeStart);
-				g_scanner.Tokens[g_scanner.TokensFreeIndex].Lexeme = lexeme;
+				// TODO: Finish this
+				// char* lexeme = malloc(g_scanner.LexemeCurrent - g_scanner.LexemeStart + 1);
+				// lexeme[g_scanner.LexemeCurrent - g_scanner.LexemeStart] = '\0';
+				// memcpy(lexeme, g_scanner.Source + g_scanner.LexemeStart, g_scanner.LexemeCurrent - g_scanner.LexemeStart);
+				// g_scanner.Tokens[g_scanner.TokensFreeIndex].Lexeme = lexeme;
 
-				g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenNumber;
-				g_scanner.Tokens[g_scanner.TokensFreeIndex].Number = atof(lexeme);
-				g_scanner.Tokens[g_scanner.TokensFreeIndex].SourceLine = g_scanner.Line;
+				// g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenNumber;
+				// g_scanner.Tokens[g_scanner.TokensFreeIndex].Number = atof(lexeme);
+				// g_scanner.Tokens[g_scanner.TokensFreeIndex].SourceLine = g_scanner.Line;
 
-				++g_scanner.TokensFreeIndex;
+				// ++g_scanner.TokensFreeIndex;
 			} else if (isalpha(c)) {
-				while (isalnum(g_scanner.Source[g_scanner.LexemeCurrent])) {
-					++g_scanner.LexemeCurrent;
-				}
+				TokenizerSkipAlphanumeric();
 
-				char* lexeme = malloc(g_scanner.LexemeCurrent - g_scanner.LexemeStart + 1);
-				lexeme[g_scanner.LexemeCurrent - g_scanner.LexemeStart] = '\0';
-				memcpy(lexeme, g_scanner.Source + g_scanner.LexemeStart, g_scanner.LexemeCurrent - g_scanner.LexemeStart);
-				g_scanner.Tokens[g_scanner.TokensFreeIndex].Lexeme = lexeme;
+				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
+				// char* lexeme = malloc(g_scanner.LexemeCurrent - g_scanner.LexemeStart + 1);
+				// lexeme[g_scanner.LexemeCurrent - g_scanner.LexemeStart] = '\0';
+				// memcpy(lexeme, g_scanner.Source + g_scanner.LexemeStart, g_scanner.LexemeCurrent - g_scanner.LexemeStart);
+				// g_scanner.Tokens[g_scanner.TokensFreeIndex].Lexeme = lexeme;
 
-				g_scanner.Tokens[g_scanner.TokensFreeIndex].Number = 0;
-				g_scanner.Tokens[g_scanner.TokensFreeIndex].SourceLine = g_scanner.Line;
+				// g_scanner.Tokens[g_scanner.TokensFreeIndex].Number = 0;
+				// g_scanner.Tokens[g_scanner.TokensFreeIndex].SourceLine = g_scanner.Line;
 
-				if (strcmp(lexeme, "let") == 0) {
+				if (memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
 					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenLet;
-				} else if (strcmp(lexeme, "const") == 0) {
+				} else if (memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
 					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenConst;
-				} else if (strcmp(lexeme, "if") == 0) {
+				} else if (memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
 					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenIf;
-				} else if (strcmp(lexeme, "while") == 0) {
+				} else if (memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
 					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenWhile;
-				} else if (strcmp(lexeme, "else") == 0) {
+				} else if (memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
 					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenElse;
-				} else if (strcmp(lexeme, "and") == 0) {
+				} else if (memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
 					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenAnd;
-				} else if (strcmp(lexeme, "or") == 0) {
+				} else if (memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
 					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenOr;
 				} else {
 					g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenIdentifier;
 				}
-
-				++g_scanner.TokensFreeIndex;
 			} else {
-				printf("Unexpected character '%c' at line %lu.\n", c, g_scanner.Line);
+				// printf("Unexpected character '%c' at line %lu.\n", c, g_scanner.Line);
+				// TODO: Error out
 			}
 			break;
 		}
 	}
 
-	g_scanner.Tokens[g_scanner.TokensFreeIndex].Type = TokenEof;
-	g_scanner.Tokens[g_scanner.TokensFreeIndex].Lexeme = nullptr;
-	g_scanner.Tokens[g_scanner.TokensFreeIndex].SourceLine = g_scanner.Line;
+	TokenizerAddToken(TokenEof, nullptr, 0);
 
-	++g_scanner.TokensFreeIndex;
 	return ResOk;
 }

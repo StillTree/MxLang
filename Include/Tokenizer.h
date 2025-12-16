@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Memory/Arena.h"
+#include "Memory/SymbolTable.h"
 #include "Types.h"
 
 typedef enum TokenType : u8 {
@@ -47,7 +48,7 @@ typedef struct Token {
 		double Number;
 	};
 	usz SourceLine;
-	usz LinePos;
+	usz SourceLinePos;
 } Token;
 
 typedef struct Tokenizer {
@@ -56,5 +57,7 @@ typedef struct Tokenizer {
 	const char* LexemeStart;
 	const char* LexemeCurrent;
 	usz SourceLine;
+	usz SourceLinePos;
 	Arena ArenaTokens;
+	SymbolTable TableStrings;
 } Tokenizer;

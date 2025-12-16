@@ -5,15 +5,13 @@
 
 // FNV-1a
 // TOOD: Consider robin hood hashing
-static u64 HashString(const char* str)
+static u64 HashString(const char* str, usz strLength)
 {
 	u64 hash = 14695981039346656037UL;
 
-	while (*str) {
-		hash ^= (u64)(u8)*str;
+	for (usz i = 0; i < strLength; ++i) {
+		hash ^= (u64)str[i];
 		hash *= 1099511628211UL;
-
-		++str;
 	}
 
 	return hash;
@@ -74,17 +72,18 @@ Result SymbolTableInit(SymbolTable* table)
 	return ResOk;
 }
 
-Result SymbolTableContains(SymbolTable* table, const char* key)
+Result SymbolTableContains(SymbolTable* table, const char* key, usz keyLength)
 {
 	if (!table || !key) {
 		return ResInvalidParams;
 	}
 
-	u64 hash = HashString(key);
+	u64 hash = HashString(key, keyLength);
 	u64 i = hash & (table->Capacity - 1);
 
 	while (table->Entries[i]) {
-		if (table->Entries[i]->Hash == hash && strcmp(key, table->Entries[i]->Key) == 0) {
+		if (table->Entries[i]->Hash == hash && keyLength == table->Entries[i]->KeyLength
+			&& memcmp(key, table->Entries[i]->Key, table->Entries[i]->KeyLength) == 0) {
 			return ResOk;
 		}
 
@@ -94,7 +93,7 @@ Result SymbolTableContains(SymbolTable* table, const char* key)
 	return ResNotFound;
 }
 
-Result SymbolTableAdd(SymbolTable* table, const char* key, const char** internedPtr)
+Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, const char** internedPtr)
 {
 	if (!table || !key) {
 		return ResInvalidParams;
@@ -108,11 +107,12 @@ Result SymbolTableAdd(SymbolTable* table, const char* key, const char** interned
 		}
 	}
 
-	u64 hash = HashString(key);
+	u64 hash = HashString(key, keyLength);
 	usz i = hash & (table->Capacity - 1);
 
 	while (table->Entries[i]) {
-		if (table->Entries[i]->Hash == hash && strcmp(key, table->Entries[i]->Key) == 0) {
+		if (table->Entries[i]->Hash == hash && keyLength == table->Entries[i]->KeyLength
+			&& memcmp(key, table->Entries[i]->Key, table->Entries[i]->KeyLength) == 0) {
 			*internedPtr = table->Entries[i]->Key;
 			return ResOk;
 		}
@@ -120,17 +120,17 @@ Result SymbolTableAdd(SymbolTable* table, const char* key, const char** interned
 		i = (i + 1) & (table->Capacity - 1);
 	}
 
-	usz keyLength = strlen(key) + 1;
 	SymbolTableEntry* newEntry;
-	Result result = ArenaAllocZeroed(&table->Arena, (void**)&newEntry, sizeof(SymbolTableEntry) + keyLength);
+	Result result = ArenaAlloc(&table->Arena, (void**)&newEntry, sizeof(SymbolTableEntry) + keyLength);
 	if (result) {
 		return result;
 	}
-	newEntry->Hash = hash;
-	
-	memcpy(newEntry->Key, key, keyLength);
 
+	newEntry->Hash = hash;
+	newEntry->KeyLength = keyLength;
+	memcpy(newEntry->Key, key, keyLength);
 	table->Entries[i] = newEntry;
+
 	++table->EntryCount;
 
 	*internedPtr = newEntry->Key;
