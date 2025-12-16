@@ -52,6 +52,7 @@ typedef struct Token {
 
 typedef struct Tokenizer {
 	const char* Source;
+	const char* SourceEnd;
 	const char* LexemeStart;
 	const char* LexemeCurrent;
 	usz SourceLine;
