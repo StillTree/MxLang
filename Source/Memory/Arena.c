@@ -107,7 +107,7 @@ Result ArenaAlloc(Arena* arena, void** buffer, usz size)
 		*buffer = tail->NextBytes;
 		tail->NextBytes += size;
 
-		// printf("Allocation! next bytes = %p, from block = %p\n", tail->NextBytes, (void*)tail);
+		printf("Allocation! next bytes = %p, from block = %p\n", tail->NextBytes, (void*)tail);
 		return ResOk;
 	}
 

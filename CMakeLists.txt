@@ -21,6 +21,7 @@ add_compile_definitions(MX_VERSION="${PROJECT_VERSION}")
 add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${INCLUDE_FILES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${INCLUDE_DIR})
+target_link_libraries(${PROJECT_NAME} PRIVATE m)
 
 if(MSVC)
 	target_compile_options(${PROJECT_NAME} PRIVATE /W4 /permissive-)

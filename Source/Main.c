@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "Result.h"
+#include "Tokenizer.h"
 
 Result ReadEntireFile(const char* filePath, const char** contents);
 
@@ -21,6 +22,23 @@ int main(int argc, char* argv[])
 	}
 
 	printf("File contents:\n%s\n", sourceCode);
+
+	TokenizerInit(sourceCode);
+	TokenizerScan();
+
+	printf("Scanned!\n\n");
+
+	Token* t = (Token*)g_tokenizer.ArenaTokens.Blocks->Data;
+	while (t < (Token*)g_tokenizer.ArenaTokens.Blocks->NextBytes) {
+		printf("Token! %lu:%lu\n", t->SourceLine, t->SourceLinePos);
+
+		if (t->Type == TokenNumber) {
+			printf("Token!: type %u %lf\n", t->Type, t->Number);
+		} else if (t->Type == TokenIdentifier) {
+			printf("Token!: type %u '%.*s'\n", t->Type, 1, t->Lexeme);
+		}
+		++t;
+	}
 
 	free((void*)sourceCode);
 

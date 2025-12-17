@@ -61,3 +61,8 @@ typedef struct Tokenizer {
 	Arena ArenaTokens;
 	SymbolTable TableStrings;
 } Tokenizer;
+
+Result TokenizerInit(const char* source);
+Result TokenizerScan();
+
+extern Tokenizer g_tokenizer;
