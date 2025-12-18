@@ -52,7 +52,6 @@ typedef struct Token {
 } Token;
 
 typedef struct Tokenizer {
-	const char* Source;
 	const char* SourceEnd;
 	const char* LexemeStart;
 	const char* LexemeCurrent;
@@ -62,7 +61,7 @@ typedef struct Tokenizer {
 	SymbolTable TableStrings;
 } Tokenizer;
 
-Result TokenizerInit(const char* source);
+Result TokenizerInit();
 Result TokenizerScan();
 
 extern Tokenizer g_tokenizer;

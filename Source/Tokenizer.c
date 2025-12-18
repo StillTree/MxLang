@@ -1,5 +1,6 @@
 #include "Tokenizer.h"
 
+#include "SourceManager.h"
 #include <ctype.h>
 #include <math.h>
 #include <string.h>
@@ -63,7 +64,7 @@ static void TokenizerAdvance()
 
 static char TokenizerPeek(usz lookahead)
 {
-	if (g_tokenizer.Source >= g_tokenizer.SourceEnd) {
+	if (g_tokenizer.LexemeCurrent + lookahead >= g_tokenizer.SourceEnd) {
 		return '\0';
 	}
 
@@ -90,7 +91,7 @@ static Result TokenizerAddToken(TokenType type, const SymbolView* lexeme, double
 		return result;
 	}
 
-	token->SourceLinePos = g_tokenizer.SourceLinePos;
+	token->SourceLinePos = g_tokenizer.SourceLinePos - (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
 	token->SourceLine = g_tokenizer.SourceLine;
 	token->Type = type;
 	token->Number = number;
@@ -116,7 +117,7 @@ inline static void TokenizerSkipAlphanumeric()
 	}
 }
 
-Result TokenizerInit(const char* source)
+Result TokenizerInit()
 {
 	Result result = StatArenaInit(&g_tokenizer.ArenaTokens, sizeof(Token));
 	if (result) {
@@ -129,18 +130,19 @@ Result TokenizerInit(const char* source)
 		return result;
 	}
 
-	g_tokenizer.Source = source;
-	g_tokenizer.SourceEnd = source + strlen(source);
+	g_tokenizer.SourceEnd = g_source.Source + g_source.SourceLength;
 	g_tokenizer.SourceLine = 1;
 	g_tokenizer.SourceLinePos = 1;
-	g_tokenizer.LexemeStart = source;
-	g_tokenizer.LexemeCurrent = source;
+	g_tokenizer.LexemeStart = g_source.Source;
+	g_tokenizer.LexemeCurrent = g_source.Source;
 
 	return ResOk;
 }
 
 Result TokenizerScan()
 {
+	g_source.Lines[0] = g_source.Source;
+
 	while (g_tokenizer.LexemeCurrent < g_tokenizer.SourceEnd) {
 		g_tokenizer.LexemeStart = g_tokenizer.LexemeCurrent;
 
@@ -274,6 +276,8 @@ Result TokenizerScan()
 		case '\n':
 			g_tokenizer.SourceLinePos = 1;
 			++g_tokenizer.SourceLine;
+
+			g_source.Lines[g_tokenizer.SourceLine - 1] = g_tokenizer.LexemeCurrent;
 			break;
 		default:
 			if (isdigit(c)) {

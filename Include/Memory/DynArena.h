@@ -3,7 +3,7 @@
 #include "Types.h"
 #include "Result.h"
 
-constexpr usz DYN_ARENA_BLOCK_DEFAULT_CAPACITY = 1024;
+static constexpr usz DYN_ARENA_BLOCK_DEFAULT_CAPACITY = 1024;
 
 typedef struct DynArenaBlock {
 	struct DynArenaBlock* NextBlock;
