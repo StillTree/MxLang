@@ -9,5 +9,6 @@ typedef enum Result : u8 {
 	ResOutOfMemory,
 	ResNotFound,
 	ResInvalidParams,
+	ResEndOfIteration,
 	ResErr
 } Result;

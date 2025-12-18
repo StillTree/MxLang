@@ -1,12 +1,12 @@
-#include "Memory/Arena.h"
+#include "Memory/DynArena.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static Result ArenaBlockNew(ArenaBlock** block)
+static Result DynArenaBlockNew(DynArenaBlock** block)
 {
-	usz blockSize = sizeof(ArenaBlock) + ARENA_BLOCK_DEFAULT_CAPACITY;
+	usz blockSize = sizeof(DynArenaBlock) + DYN_ARENA_BLOCK_DEFAULT_CAPACITY;
 
 	*block = malloc(blockSize);
 
@@ -15,7 +15,7 @@ static Result ArenaBlockNew(ArenaBlock** block)
 	}
 
 	(*block)->NextBlock = nullptr;
-	(*block)->CapacityBytes = blockSize;
+	(*block)->CapacityBytes = DYN_ARENA_BLOCK_DEFAULT_CAPACITY;
 	(*block)->NextBytes = (*block)->Data;
 
 	// printf("New block! capacity = %lu addr = %p\n", (*block)->CapacityBytes, (void*)*block);
@@ -23,43 +23,43 @@ static Result ArenaBlockNew(ArenaBlock** block)
 	return ResOk;
 }
 
-static void ArenaBlockFreeChain(ArenaBlock* block)
+static void DynArenaBlockFreeChain(DynArenaBlock* block)
 {
 	if (!block) {
 		printf("Warn: Attempted to free a 'nullptr' block chain!\n");
 	}
 
 	while (block) {
-		ArenaBlock* next = block->NextBlock;
+		DynArenaBlock* next = block->NextBlock;
 		free(block);
 		// printf("Freed block! addr = %p\n", (void*)block);
 		block = next;
 	}
 }
 
-Result ArenaInit(Arena* arena)
+Result DynArenaInit(DynArena* arena)
 {
 	if (!arena) {
 		return ResInvalidParams;
 	}
 
-	return ArenaBlockNew(&arena->Blocks);
+	return DynArenaBlockNew(&arena->Blocks);
 }
 
-Result ArenaMarkSet(Arena* arena, ArenaMark* mark)
+Result DynArenaMarkSet(DynArena* arena, DynArenaMark* mark)
 {
 	if (!arena || !mark) {
 		return ResInvalidParams;
 	}
 
-	ArenaBlock* tail = arena->Blocks;
+	DynArenaBlock* tail = arena->Blocks;
 	// An arena will always have at least one block with free memory available, so this is safe
 	while (tail->NextBlock) {
 		tail = tail->NextBlock;
 	}
 
 	if (tail->NextBytes >= tail->Data + tail->CapacityBytes) {
-		Result result = ArenaBlockNew(&tail->NextBlock);
+		Result result = DynArenaBlockNew(&tail->NextBlock);
 		if (result) {
 			return result;
 		}
@@ -75,13 +75,13 @@ Result ArenaMarkSet(Arena* arena, ArenaMark* mark)
 	return ResOk;
 }
 
-Result ArenaMarkUndo(Arena* arena, ArenaMark* mark)
+Result DynArenaMarkUndo(DynArena* arena, DynArenaMark* mark)
 {
 	if (!arena || !mark) {
 		return ResInvalidParams;
 	}
 
-	ArenaBlockFreeChain(mark->Blocks->NextBlock);
+	DynArenaBlockFreeChain(mark->Blocks->NextBlock);
 
 	mark->Blocks->NextBytes = mark->ByteMark;
 	mark->Blocks->NextBlock = nullptr;
@@ -91,13 +91,13 @@ Result ArenaMarkUndo(Arena* arena, ArenaMark* mark)
 	return ResOk;
 }
 
-Result ArenaAlloc(Arena* arena, void** buffer, usz size)
+Result DynArenaAlloc(DynArena* arena, void** buffer, usz size)
 {
 	if (!arena || !buffer || size <= 0) {
 		return ResInvalidParams;
 	}
 
-	ArenaBlock* tail = arena->Blocks;
+	DynArenaBlock* tail = arena->Blocks;
 	// An arena will always have at least one block with free memory available, so this is safe
 	while (tail->NextBlock) {
 		tail = tail->NextBlock;
@@ -107,16 +107,16 @@ Result ArenaAlloc(Arena* arena, void** buffer, usz size)
 		*buffer = tail->NextBytes;
 		tail->NextBytes += size;
 
-		printf("Allocation! next bytes = %p, from block = %p\n", tail->NextBytes, (void*)tail);
+		// printf("Allocation from %p! next bytes = %p, from block = %p\n", (void*)arena, tail->NextBytes, (void*)tail);
 		return ResOk;
 	}
 
 	// TODO: Check if allocation size exceeds block size, then do something
-	if (size > ARENA_BLOCK_DEFAULT_CAPACITY) {
+	if (size > DYN_ARENA_BLOCK_DEFAULT_CAPACITY) {
 		return ResUnimplemented;
 	}
 
-	Result result = ArenaBlockNew(&tail->NextBlock);
+	Result result = DynArenaBlockNew(&tail->NextBlock);
 	if (result) {
 		return result;
 	}
@@ -129,9 +129,9 @@ Result ArenaAlloc(Arena* arena, void** buffer, usz size)
 	return ResOk;
 }
 
-Result ArenaAllocZeroed(Arena* arena, void** buffer, usz size)
+Result DynArenaAllocZeroed(DynArena* arena, void** buffer, usz size)
 {
-	Result result = ArenaAlloc(arena, buffer, size);
+	Result result = DynArenaAlloc(arena, buffer, size);
 	if (result) {
 		return result;
 	}
@@ -140,13 +140,13 @@ Result ArenaAllocZeroed(Arena* arena, void** buffer, usz size)
 	return ResOk;
 }
 
-Result ArenaDeinit(Arena* arena)
+Result DynArenaDeinit(DynArena* arena)
 {
 	if (!arena) {
 		return ResInvalidParams;
 	}
 
-	ArenaBlockFreeChain(arena->Blocks);
+	DynArenaBlockFreeChain(arena->Blocks);
 
 	arena->Blocks = nullptr;
 

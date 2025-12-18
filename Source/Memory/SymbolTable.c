@@ -10,7 +10,7 @@ static u64 HashString(const char* str, usz strLength)
 	u64 hash = 14695981039346656037UL;
 
 	for (usz i = 0; i < strLength; ++i) {
-		hash ^= (u64)str[i];
+		hash ^= (u64)(u8)str[i];
 		hash *= 1099511628211UL;
 	}
 
@@ -56,7 +56,7 @@ Result SymbolTableInit(SymbolTable* table)
 		return ResInvalidParams;
 	}
 
-	Result result = ArenaInit(&table->Arena);
+	Result result = DynArenaInit(&table->Arena);
 	if (result) {
 		return result;
 	}
@@ -74,7 +74,7 @@ Result SymbolTableInit(SymbolTable* table)
 
 Result SymbolTableContains(SymbolTable* table, const char* key, usz keyLength)
 {
-	if (!table || !key) {
+	if (!table || !key || keyLength <= 0) {
 		return ResInvalidParams;
 	}
 
@@ -93,9 +93,9 @@ Result SymbolTableContains(SymbolTable* table, const char* key, usz keyLength)
 	return ResNotFound;
 }
 
-Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, const char** internedPtr)
+Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, SymbolView* internedSymbol)
 {
-	if (!table || !key) {
+	if (!table || !key || keyLength <= 0) {
 		return ResInvalidParams;
 	}
 
@@ -113,7 +113,8 @@ Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, const 
 	while (table->Entries[i]) {
 		if (table->Entries[i]->Hash == hash && keyLength == table->Entries[i]->KeyLength
 			&& memcmp(key, table->Entries[i]->Key, table->Entries[i]->KeyLength) == 0) {
-			*internedPtr = table->Entries[i]->Key;
+			internedSymbol->Symbol = table->Entries[i]->Key;
+			internedSymbol->SymbolLength = table->Entries[i]->KeyLength;
 			return ResOk;
 		}
 
@@ -121,7 +122,7 @@ Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, const 
 	}
 
 	SymbolTableEntry* newEntry;
-	Result result = ArenaAlloc(&table->Arena, (void**)&newEntry, sizeof(SymbolTableEntry) + keyLength);
+	Result result = DynArenaAlloc(&table->Arena, (void**)&newEntry, sizeof(SymbolTableEntry) + keyLength);
 	if (result) {
 		return result;
 	}
@@ -133,7 +134,8 @@ Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, const 
 
 	++table->EntryCount;
 
-	*internedPtr = newEntry->Key;
+	internedSymbol->Symbol = newEntry->Key;
+	internedSymbol->SymbolLength = newEntry->KeyLength;
 
 	return ResOk;
 }
@@ -148,5 +150,5 @@ Result SymbolTableDeinit(SymbolTable* table)
 	table->Capacity = 0;
 	table->EntryCount = 0;
 
-	return ArenaDeinit(&table->Arena);
+	return DynArenaDeinit(&table->Arena);
 }

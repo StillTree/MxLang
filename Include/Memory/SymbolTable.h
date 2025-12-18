@@ -1,7 +1,12 @@
 #pragma once
 
+#include "Memory/DynArena.h"
 #include "Types.h"
-#include "Memory/Arena.h"
+
+typedef struct SymbolView {
+	usz SymbolLength;
+	const char* Symbol;
+} SymbolView;
 
 typedef struct SymbolTableEntry {
 	u64 Hash;
@@ -13,12 +18,11 @@ typedef struct SymbolTable {
 	SymbolTableEntry** Entries;
 	usz Capacity;
 	usz EntryCount;
-	Arena Arena;
+	DynArena Arena;
 } SymbolTable;
-
 
 Result SymbolTableInit(SymbolTable* table);
 /// Returns `ResOk` when found and `ResErr` when not.
 Result SymbolTableContains(SymbolTable* table, const char* key, usz keyLength);
-Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, const char** internedPtr);
+Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, SymbolView* internedSymbol);
 Result SymbolTableDeinit(SymbolTable* table);

@@ -1,6 +1,5 @@
 #include "Tokenizer.h"
 
-#include "Memory/Arena.h"
 #include <ctype.h>
 #include <math.h>
 #include <string.h>
@@ -83,22 +82,21 @@ static bool TokenizerMatch(char expected)
 	return true;
 }
 
-static Result TokenizerAddToken(TokenType type, const char* lexeme, double number)
+static Result TokenizerAddToken(TokenType type, const SymbolView* lexeme, double number)
 {
 	Token* token;
-	Result result = ArenaAlloc(&g_tokenizer.ArenaTokens, (void**)&token, sizeof(Token));
-	if (!result) {
+	Result result = StatArenaAlloc(&g_tokenizer.ArenaTokens, (void**)&token);
+	if (result) {
 		return result;
 	}
 
 	token->SourceLinePos = g_tokenizer.SourceLinePos;
 	token->SourceLine = g_tokenizer.SourceLine;
 	token->Type = type;
+	token->Number = number;
 
-	if (type == TokenNumber) {
-		token->Number = number;
-	} else {
-		token->Lexeme = lexeme;
+	if (type == TokenIdentifier) {
+		token->Lexeme = *lexeme;
 	}
 
 	return ResOk;
@@ -120,14 +118,14 @@ inline static void TokenizerSkipAlphanumeric()
 
 Result TokenizerInit(const char* source)
 {
-	Result result = ArenaInit(&g_tokenizer.ArenaTokens);
+	Result result = StatArenaInit(&g_tokenizer.ArenaTokens, sizeof(Token));
 	if (result) {
 		return result;
 	}
 
 	result = SymbolTableInit(&g_tokenizer.TableStrings);
 	if (result) {
-		ArenaDeinit(&g_tokenizer.ArenaTokens);
+		StatArenaDeinit(&g_tokenizer.ArenaTokens);
 		return result;
 	}
 
@@ -248,12 +246,12 @@ Result TokenizerScan()
 			TokenizerSkipDigit();
 
 			usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
-			const char* lexeme;
+			SymbolView lexeme;
 			Result result = SymbolTableAdd(&g_tokenizer.TableStrings, g_tokenizer.LexemeStart, lexemeLength, &lexeme);
 			if (result) {
 				// TODO: Error out
 			}
-			TokenizerAddToken(TokenMatrixShape, lexeme, 0);
+			TokenizerAddToken(TokenMatrixShape, &lexeme, 0);
 		} break;
 		case '=':
 			if (TokenizerMatch('=')) {
@@ -294,27 +292,27 @@ Result TokenizerScan()
 
 				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
 
-				if (memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
+				if (lexemeLength == 3 && memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
 					TokenizerAddToken(TokenLet, nullptr, 0);
-				} else if (memcmp(g_tokenizer.LexemeStart, "const", lexemeLength) == 0) {
+				} else if (lexemeLength == 5 && memcmp(g_tokenizer.LexemeStart, "const", lexemeLength) == 0) {
 					TokenizerAddToken(TokenConst, nullptr, 0);
-				} else if (memcmp(g_tokenizer.LexemeStart, "if", lexemeLength) == 0) {
+				} else if (lexemeLength == 2 && memcmp(g_tokenizer.LexemeStart, "if", lexemeLength) == 0) {
 					TokenizerAddToken(TokenIf, nullptr, 0);
-				} else if (memcmp(g_tokenizer.LexemeStart, "else", lexemeLength) == 0) {
+				} else if (lexemeLength == 4 && memcmp(g_tokenizer.LexemeStart, "else", lexemeLength) == 0) {
 					TokenizerAddToken(TokenElse, nullptr, 0);
-				} else if (memcmp(g_tokenizer.LexemeStart, "while", lexemeLength) == 0) {
+				} else if (lexemeLength == 5 && memcmp(g_tokenizer.LexemeStart, "while", lexemeLength) == 0) {
 					TokenizerAddToken(TokenWhile, nullptr, 0);
-				} else if (memcmp(g_tokenizer.LexemeStart, "and", lexemeLength) == 0) {
+				} else if (lexemeLength == 3 && memcmp(g_tokenizer.LexemeStart, "and", lexemeLength) == 0) {
 					TokenizerAddToken(TokenAnd, nullptr, 0);
-				} else if (memcmp(g_tokenizer.LexemeStart, "or", lexemeLength) == 0) {
+				} else if (lexemeLength == 2 && memcmp(g_tokenizer.LexemeStart, "or", lexemeLength) == 0) {
 					TokenizerAddToken(TokenOr, nullptr, 0);
 				} else {
-					const char* lexeme;
+					SymbolView lexeme;
 					Result result = SymbolTableAdd(&g_tokenizer.TableStrings, g_tokenizer.LexemeStart, lexemeLength, &lexeme);
 					if (result) {
 						// TODO: Error out
 					}
-					TokenizerAddToken(TokenIdentifier, lexeme, 0);
+					TokenizerAddToken(TokenIdentifier, &lexeme, 0);
 				}
 			} else {
 				// printf("Unexpected character '%c' at line %lu.\n", c, g_scanner.Line);

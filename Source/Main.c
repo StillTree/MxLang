@@ -1,7 +1,7 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include "Result.h"
 #include "Tokenizer.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 Result ReadEntireFile(const char* filePath, const char** contents);
 
@@ -28,16 +28,19 @@ int main(int argc, char* argv[])
 
 	printf("Scanned!\n\n");
 
-	Token* t = (Token*)g_tokenizer.ArenaTokens.Blocks->Data;
-	while (t < (Token*)g_tokenizer.ArenaTokens.Blocks->NextBytes) {
-		printf("Token! %lu:%lu\n", t->SourceLine, t->SourceLinePos);
+	StatArenaIter i;
+	while (!StatArenaIterate(&g_tokenizer.ArenaTokens, &i)) {
+		Token* t = i.Item;
+
+		printf("Token %u", t->Type);
 
 		if (t->Type == TokenNumber) {
-			printf("Token!: type %u %lf\n", t->Type, t->Number);
+			printf(" %lf", t->Number);
 		} else if (t->Type == TokenIdentifier) {
-			printf("Token!: type %u '%.*s'\n", t->Type, 1, t->Lexeme);
+			printf(" '%.*s'", (i32)t->Lexeme.SymbolLength, t->Lexeme.Symbol);
 		}
-		++t;
+
+		printf("\n");
 	}
 
 	free((void*)sourceCode);
