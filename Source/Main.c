@@ -1,9 +1,7 @@
 #include "Errors.h"
-#include "Result.h"
 #include "SourceManager.h"
 #include "Tokenizer.h"
 #include <stdio.h>
-#include <stdlib.h>
 
 
 int main(int argc, char* argv[])
@@ -19,7 +17,7 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	printf("File contents:\n%s\n", g_source.Source);
+	printf("File contents:\n%.*s\n", (u32)g_source.SourceLength, g_source.Source);
 
 	TokenizerInit();
 	TokenizerScan();
