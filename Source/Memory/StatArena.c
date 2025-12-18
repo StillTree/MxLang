@@ -84,10 +84,12 @@ Result StatArenaMarkUndo(StatArena* arena, StatArenaMark* mark)
 		return ResInvalidParams;
 	}
 
-	StatArenaBlockFreeChain(mark->Blocks->NextBlock);
+	if (mark->Blocks->NextBlock) {
+		StatArenaBlockFreeChain(mark->Blocks->NextBlock);
+		mark->Blocks->NextBlock = nullptr;
+	}
 
 	mark->Blocks->NextBytes = mark->ByteMark;
-	mark->Blocks->NextBlock = nullptr;
 
 	// printf("Mark undid! new arena tail = %p, bytes next = %p\n", (void*)mark->Blocks, mark->Blocks->NextBytes);
 

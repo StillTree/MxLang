@@ -81,10 +81,12 @@ Result DynArenaMarkUndo(DynArena* arena, DynArenaMark* mark)
 		return ResInvalidParams;
 	}
 
-	DynArenaBlockFreeChain(mark->Blocks->NextBlock);
+	if (mark->Blocks->NextBlock) {
+		DynArenaBlockFreeChain(mark->Blocks->NextBlock);
+		mark->Blocks->NextBlock = nullptr;
+	}
 
 	mark->Blocks->NextBytes = mark->ByteMark;
-	mark->Blocks->NextBlock = nullptr;
 
 	// printf("Mark undid! new arena tail = %p, bytes next = %p\n", (void*)mark->Blocks, mark->Blocks->NextBytes);
 
