@@ -54,6 +54,9 @@ Result SourceInit(const char* name)
 		++g_source.LineCount;
 	}
 
+	// The last line might not end with a \n
+	++g_source.LineCount;
+
 	g_source.Lines = (const char**)calloc(g_source.LineCount, sizeof(const char*));
 	g_source.FileName = name;
 

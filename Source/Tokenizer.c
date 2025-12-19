@@ -1,5 +1,6 @@
 #include "Tokenizer.h"
 
+#include "Diagnostics.h"
 #include "SourceManager.h"
 #include <ctype.h>
 #include <math.h>
@@ -220,7 +221,8 @@ Result TokenizerScan()
 			g_tokenizer.LexemeStart = g_tokenizer.LexemeCurrent;
 
 			if (!isdigit(TokenizerConsume())) {
-				// TODO: Error out
+				DIAG_EMIT(DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_STRING("matrix shape"),
+					DIAG_ARG_CHAR(':'));
 
 				TokenizerSkipAlphanumeric();
 
@@ -230,7 +232,8 @@ Result TokenizerScan()
 			TokenizerSkipDigit();
 
 			if (!TokenizerMatch('x')) {
-				// TODO: Error out
+				DIAG_EMIT(DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_STRING("matrix shape"),
+					DIAG_ARG_CHAR(':'));
 
 				TokenizerSkipAlphanumeric();
 
@@ -238,7 +241,8 @@ Result TokenizerScan()
 			}
 
 			if (!isdigit(TokenizerConsume())) {
-				// TODO: Error out
+				DIAG_EMIT(DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_STRING("matrix shape"),
+					DIAG_ARG_CHAR(':'));
 
 				TokenizerSkipAlphanumeric();
 
@@ -251,7 +255,7 @@ Result TokenizerScan()
 			SymbolView lexeme;
 			Result result = SymbolTableAdd(&g_tokenizer.TableStrings, g_tokenizer.LexemeStart, lexemeLength, &lexeme);
 			if (result) {
-				// TODO: Error out
+				return result;
 			}
 			TokenizerAddToken(TokenMatrixShape, &lexeme, 0);
 		} break;
@@ -266,7 +270,8 @@ Result TokenizerScan()
 			if (TokenizerMatch('=')) {
 				TokenizerAddToken(TokenNotEqual, nullptr, 0);
 			} else {
-				// TODO: Error out
+				DIAG_EMIT(
+					DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_CHAR('='), DIAG_ARG_CHAR('!'));
 			}
 			break;
 		case ' ':
@@ -277,7 +282,7 @@ Result TokenizerScan()
 			g_tokenizer.SourceLinePos = 1;
 			++g_tokenizer.SourceLine;
 
-			g_source.Lines[g_tokenizer.SourceLine - 2] = g_tokenizer.LexemeCurrent;
+			g_source.Lines[g_tokenizer.SourceLine - 1] = g_tokenizer.LexemeCurrent;
 			break;
 		default:
 			if (isdigit(c)) {
@@ -314,13 +319,12 @@ Result TokenizerScan()
 					SymbolView lexeme;
 					Result result = SymbolTableAdd(&g_tokenizer.TableStrings, g_tokenizer.LexemeStart, lexemeLength, &lexeme);
 					if (result) {
-						// TODO: Error out
+						return result;
 					}
 					TokenizerAddToken(TokenIdentifier, &lexeme, 0);
 				}
 			} else {
-				// printf("Unexpected character '%c' at line %lu.\n", c, g_scanner.Line);
-				// TODO: Error out
+				DIAG_EMIT(DiagUnexpectedToken, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_CHAR(c));
 			}
 			break;
 		}

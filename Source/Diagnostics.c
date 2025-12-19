@@ -16,7 +16,8 @@ typedef struct DiagInfo {
 	const char* Format;
 } DiagInfo;
 
-static const DiagInfo DIAG_TYPE_INFO[] = { { DiagLevelError, "Unexpected token '%0'" } };
+static const DiagInfo DIAG_TYPE_INFO[] = { [DiagUnexpectedToken] = { DiagLevelError, "Unexpected token '%0'" },
+	[DiagExpectedTokenAfter] = { DiagLevelError, "Expected '%0' after '%1'" } };
 
 static usz NumberWidth(usz num)
 {
@@ -75,7 +76,7 @@ void DiagPrint(const Diag* diag)
 
 	fprintf(out, "%zu | ", diag->SourceLine);
 
-	const char* iter = g_source.Lines[diag->SourceLine - 2];
+	const char* iter = g_source.Lines[diag->SourceLine - 1];
 	while (*iter != '\n') {
 		fputc(*iter, out);
 		++iter;
@@ -111,9 +112,6 @@ Result DiagInit()
 
 void DiagEmit(DiagType type, usz sourceLine, usz sourceLinePos, const DiagArg* args, usz argCount)
 {
-	// TODO: Max diagnostic count
-	assert(argCount <= MAX_DIAG_ARGS);
-
 	Diag* diag = nullptr;
 	assert(StatArenaAlloc(&g_diagState.Arena, (void**)&diag) == ResOk);
 

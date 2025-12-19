@@ -3,7 +3,6 @@
 #include "Tokenizer.h"
 #include <stdio.h>
 
-
 int main(int argc, char* argv[])
 {
 	printf("MxLang v" MX_VERSION "\n\n");
@@ -23,27 +22,14 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	TokenizerInit();
-	TokenizerScan();
+	if (TokenizerInit()) {
+		return 1;
+	}
+	if (TokenizerScan()) {
+		return 1;
+	}
 
 	printf("Scanned!\n\n");
-
-	// StatArenaIter i;
-	// while (!StatArenaIterate(&g_tokenizer.ArenaTokens, &i)) {
-	// 	Token* t = i.Item;
-
-	// 	printf("Token %u at %lu:%lu", t->Type, t->SourceLine, t->SourceLinePos);
-
-	// 	if (t->Type == TokenNumber) {
-	// 		printf(" %lf", t->Number);
-	// 	} else if (t->Type == TokenIdentifier) {
-	// 		printf(" '%.*s'", (i32)t->Lexeme.SymbolLength, t->Lexeme.Symbol);
-	// 	}
-
-	// 	printf("\n");
-	// }
-
-	DIAG_EMIT(DiagUnexpectedToken, 11, 5, DIAG_ARG_CHAR('i'));
 
 	DiagReport();
 

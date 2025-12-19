@@ -4,7 +4,7 @@
 #include <string.h>
 
 // FNV-1a
-// TOOD: Consider robin hood hashing
+// TODO: Consider robin hood hashing
 static u64 HashString(const char* str, usz strLength)
 {
 	u64 hash = 14695981039346656037UL;

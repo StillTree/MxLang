@@ -3,9 +3,9 @@
 #include "Memory/StatArena.h"
 #include "Types.h"
 
-static constexpr usz MAX_DIAG_ARGS = 4;
+static constexpr usz MAX_DIAG_ARGS = 2;
 
-typedef enum DiagType { DiagUnexpectedToken } DiagType;
+typedef enum DiagType { DiagUnexpectedToken, DiagExpectedTokenAfter } DiagType;
 
 typedef enum DiagArgType {
 	DiagArgChar,
@@ -42,6 +42,11 @@ extern DiagState g_diagState;
 #define DIAG_ARG_CHAR(x) ((DiagArg) { DiagArgChar, { .Char = (x) } })
 #define DIAG_ARG_STRING(x) ((DiagArg) { DiagArgString, { .String = (x) } })
 
+#define DIAG_EMIT0(type, sourceLine, sourceLinePos) DiagEmit((type), (sourceLine), (sourceLinePos), nullptr, 0)
+
 #define DIAG_EMIT(type, sourceLine, sourceLinePos, ...)                                                                                    \
-	DiagEmit((type), (sourceLine), (sourceLinePos), (const DiagArg[]) { __VA_ARGS__ },                                                     \
-		sizeof((const DiagArg[]) { __VA_ARGS__ }) / sizeof(DiagArg))
+	do {                                                                                                                                   \
+		static_assert(sizeof((const DiagArg[]) { __VA_ARGS__ }) / sizeof(DiagArg) <= MAX_DIAG_ARGS, "Too many diagnostic arguments");      \
+		DiagEmit((type), (sourceLine), (sourceLinePos), (const DiagArg[]) { __VA_ARGS__ },                                                 \
+			sizeof((const DiagArg[]) { __VA_ARGS__ }) / sizeof(DiagArg));                                                                  \
+	} while (false)
