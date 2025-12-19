@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
 	// 	printf("\n");
 	// }
 
-	DiagEmit(DiagUnexpectedToken, 11, 5, 1, DIAG_ARG_CHAR('i'));
+	DIAG_EMIT(DiagUnexpectedToken, 11, 5, DIAG_ARG_CHAR('i'));
 
 	DiagReport();
 

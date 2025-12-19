@@ -5,13 +5,9 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-DiagState g_diagState = {0};
+DiagState g_diagState = { 0 };
 
-typedef enum DiagLevel {
-	DiagLevelNote,
-	DiagLevelWarning,
-	DiagLevelError
-} DiagLevel;
+typedef enum DiagLevel { DiagLevelNote, DiagLevelWarning, DiagLevelError } DiagLevel;
 
 static const char* const DIAG_LEVEL_STR[] = { "Note", "Warning", "Error" };
 
@@ -113,29 +109,25 @@ Result DiagInit()
 	return ResOk;
 }
 
-void DiagEmit(DiagType type, usz sourceLine, usz sourceLinePos, usz argCount, ...)
+void DiagEmit(DiagType type, usz sourceLine, usz sourceLinePos, const DiagArg* args, usz argCount)
 {
+	// TODO: Max diagnostic count
+	assert(argCount <= MAX_DIAG_ARGS);
+
 	Diag* diag = nullptr;
 	assert(StatArenaAlloc(&g_diagState.Arena, (void**)&diag) == ResOk);
 
 	diag->Type = type;
 	diag->SourceLine = sourceLine;
 	diag->SourceLinePos = sourceLinePos;
-
-	va_list args;
-	va_start(args, argCount);
-
 	for (usz i = 0; i < argCount; ++i) {
-		DiagArg diagArg = va_arg(args, DiagArg);
-		diag->Args[i] = diagArg;
+		diag->Args[i] = args[i];
 	}
-
-	va_end(args);
 }
 
 void DiagReport()
 {
-	StatArenaIter iter = {0};
+	StatArenaIter iter = { 0 };
 	while (!StatArenaIterate(&g_diagState.Arena, &iter)) {
 		DiagPrint(iter.Item);
 	}
@@ -145,7 +137,4 @@ void DiagReport()
 	assert(StatArenaMarkSet(&g_diagState.Arena, &g_diagState.Mark) == ResOk);
 }
 
-Result DiagDeinit()
-{
-	return StatArenaDeinit(&g_diagState.Arena);
-}
+Result DiagDeinit() { return StatArenaDeinit(&g_diagState.Arena); }
