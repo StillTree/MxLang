@@ -79,7 +79,7 @@ void DiagPrint(const Diag* diag)
 
 	fprintf(out, "%zu | ", diag->SourceLine);
 
-	const char* iter = g_source.Lines[diag->SourceLine - 1];
+	const char* iter = g_source.Lines[diag->SourceLine - 2];
 	while (*iter != '\n') {
 		fputc(*iter, out);
 		++iter;

@@ -277,7 +277,7 @@ Result TokenizerScan()
 			g_tokenizer.SourceLinePos = 1;
 			++g_tokenizer.SourceLine;
 
-			g_source.Lines[g_tokenizer.SourceLine - 1] = g_tokenizer.LexemeCurrent;
+			g_source.Lines[g_tokenizer.SourceLine - 2] = g_tokenizer.LexemeCurrent;
 			break;
 		default:
 			if (isdigit(c)) {

@@ -143,6 +143,10 @@ Result StatArenaAllocZeroed(StatArena* arena, void** buffer)
 Result StatArenaIterate(StatArena* arena, StatArenaIter* iter)
 {
 	if (!iter->Item) {
+		if (arena->Blocks->Data >= arena->Blocks->NextBytes) {
+			return ResEndOfIteration;
+		}
+
 		iter->Item = arena->Blocks->Data;
 		iter->CurBlock = arena->Blocks;
 		return ResOk;
