@@ -16,6 +16,7 @@ static Result StatArenaBlockNew(StatArenaBlock** block, usz itemSizeBytes)
 	}
 
 	(*block)->NextBlock = nullptr;
+	(*block)->PrevBlock = nullptr;
 	(*block)->CapacityBytes = capacityBytes;
 	(*block)->NextBytes = (*block)->Data;
 
@@ -121,6 +122,7 @@ Result StatArenaAlloc(StatArena* arena, void** buffer)
 		return result;
 	}
 
+	tail->NextBlock->PrevBlock = tail;
 	tail = tail->NextBlock;
 	*buffer = tail->NextBytes;
 	tail->NextBytes += arena->ItemSizeBytes;
@@ -140,7 +142,7 @@ Result StatArenaAllocZeroed(StatArena* arena, void** buffer)
 	return ResOk;
 }
 
-Result StatArenaIterate(StatArena* arena, StatArenaIter* iter)
+Result StatArenaIterNext(StatArena* arena, StatArenaIter* iter)
 {
 	if (!iter->Item) {
 		if (arena->Blocks->Data >= arena->Blocks->NextBytes) {
@@ -164,6 +166,26 @@ Result StatArenaIterate(StatArena* arena, StatArenaIter* iter)
 	}
 
 	return ResEndOfIteration;
+}
+
+Result StatArenaIterBack(StatArena* arena, StatArenaIter* iter)
+{
+	if (!iter->Item) {
+		return ResEndOfIteration;
+	}
+
+	if ((u8*)iter->Item - arena->ItemSizeBytes < iter->CurBlock->Data) {
+		if (!iter->CurBlock->PrevBlock) {
+			return ResEndOfIteration;
+		}
+
+		iter->CurBlock = iter->CurBlock->PrevBlock;
+		iter->Item = iter->CurBlock->Data + iter->CurBlock->CapacityBytes - arena->ItemSizeBytes;
+		return ResOk;
+	}
+
+	iter->Item = (u8*)iter->Item - arena->ItemSizeBytes;
+	return ResOk;
 }
 
 Result StatArenaDeinit(StatArena* arena)

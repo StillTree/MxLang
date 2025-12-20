@@ -16,7 +16,8 @@ typedef struct DiagInfo {
 	const char* Format;
 } DiagInfo;
 
-static const DiagInfo DIAG_TYPE_INFO[] = { [DiagUnexpectedToken] = { DiagLevelError, "Unexpected token '%0'" },
+static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelError, "Expected token '%0'" },
+	[DiagUnexpectedToken] = { DiagLevelError, "Unexpected token '%0'" },
 	[DiagExpectedTokenAfter] = { DiagLevelError, "Expected '%0' after '%1'" } };
 
 static usz NumberWidth(usz num)
@@ -126,7 +127,7 @@ void DiagEmit(DiagType type, usz sourceLine, usz sourceLinePos, const DiagArg* a
 void DiagReport()
 {
 	StatArenaIter iter = { 0 };
-	while (!StatArenaIterate(&g_diagState.Arena, &iter)) {
+	while (StatArenaIterate(&g_diagState.Arena, &iter) == ResOk) {
 		DiagPrint(iter.Item);
 	}
 

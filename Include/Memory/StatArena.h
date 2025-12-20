@@ -5,6 +5,7 @@
 
 typedef struct StatArenaBlock {
 	struct StatArenaBlock* NextBlock;
+	struct StatArenaBlock* PrevBlock;
 	usz CapacityBytes;
 	u8* NextBytes;
 	alignas(8) u8 Data[];
@@ -31,5 +32,6 @@ Result StatArenaAlloc(StatArena* arena, void** buffer);
 Result StatArenaAllocZeroed(StatArena* arena, void** buffer);
 Result StatArenaMarkSet(StatArena* arena, StatArenaMark* mark);
 Result StatArenaMarkUndo(StatArena* arena, StatArenaMark* mark);
-Result StatArenaIterate(StatArena* arena, StatArenaIter* iter);
+Result StatArenaIterNext(StatArena* arena, StatArenaIter* iter);
+Result StatArenaIterBack(StatArena* arena, StatArenaIter* iter);
 Result StatArenaDeinit(StatArena* arena);
