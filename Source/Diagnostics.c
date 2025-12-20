@@ -127,7 +127,7 @@ void DiagEmit(DiagType type, usz sourceLine, usz sourceLinePos, const DiagArg* a
 void DiagReport()
 {
 	StatArenaIter iter = { 0 };
-	while (StatArenaIterate(&g_diagState.Arena, &iter) == ResOk) {
+	while (StatArenaIterNext(&g_diagState.Arena, &iter) == ResOk) {
 		DiagPrint(iter.Item);
 	}
 
