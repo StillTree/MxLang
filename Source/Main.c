@@ -1,7 +1,116 @@
 #include "Diagnostics.h"
 #include "SourceManager.h"
 #include "Tokenizer.h"
+#include "Parser.h"
 #include <stdio.h>
+
+void PrintToken(TokenType t)
+{
+	switch (t) {
+	case TokenLeftRoundBracket:
+		printf("TokenLeftRoundBracket");
+		break;
+	case TokenRightRoundBracket:
+		printf("TokenRightRoundBracket");
+		break;
+	case TokenLeftSquareBracket:
+		printf("TokenLeftSquareBracket");
+		break;
+	case TokenRightSquareBracket:
+		printf("TokenRightSquareBracket");
+		break;
+	case TokenLeftVectorBracket:
+		printf("TokenLeftVectorBracket");
+		break;
+	case TokenRightVectorBracket:
+		printf("TokenRightVectorBracket");
+		break;
+	case TokenLeftCurlyBracket:
+		printf("TokenLeftCurlyBracket");
+		break;
+	case TokenRightCurlyBracket:
+		printf("TokenRightCurlyBracket");
+		break;
+	case TokenComma:
+		printf("TokenComma");
+		break;
+	case TokenAdd:
+		printf("TokenAdd");
+		break;
+	case TokenSubtract:
+		printf("TokenSubtract");
+		break;
+	case TokenMultiply:
+		printf("TokenMultiply");
+		break;
+	case TokenDivide:
+		printf("TokenDivide");
+		break;
+	case TokenToPower:
+		printf("TokenToPower");
+		break;
+	case TokenTranspose:
+		printf("TokenTranspose");
+		break;
+	case TokenColon:
+		printf("TokenColon");
+		break;
+	case TokenMatrixShape:
+		printf("TokenMatrixShape");
+		break;
+	case TokenEqual:
+		printf("TokenEqual");
+		break;
+	case TokenIdentifier:
+		printf("TokenIdentifier");
+		break;
+	case TokenNumber:
+		printf("TokenNumber");
+		break;
+	case TokenLet:
+		printf("TokenLet");
+		break;
+	case TokenConst:
+		printf("TokenConst");
+		break;
+	case TokenIf:
+		printf("TokenIf");
+		break;
+	case TokenElse:
+		printf("TokenElse");
+		break;
+	case TokenWhile:
+		printf("TokenWhile");
+		break;
+	case TokenOr:
+		printf("TokenOr");
+		break;
+	case TokenAnd:
+		printf("TokenAnd");
+		break;
+	case TokenEqualEqual:
+		printf("TokenEqualEqual");
+		break;
+	case TokenNotEqual:
+		printf("TokenNotEqual");
+		break;
+	case TokenLess:
+		printf("TokenLess");
+		break;
+	case TokenLessEqual:
+		printf("TokenLessEqual");
+		break;
+	case TokenGreater:
+		printf("TokenGreater");
+		break;
+	case TokenGreaterEqual:
+		printf("TokenGreaterEqual");
+		break;
+	case TokenEof:
+		printf("TokenEof");
+		break;
+	}
+}
 
 int main(int argc, char* argv[])
 {
@@ -25,13 +134,48 @@ int main(int argc, char* argv[])
 	if (TokenizerInit()) {
 		return 1;
 	}
-	if (TokenizerScan()) {
+
+	// while (true) {
+	// 	Token* token;
+	// 	TokenizerNextToken(&token);
+
+	// 	if (!token) {
+	// 		break;
+	// 	}
+
+	// 	printf("Token!: ");
+	// 	PrintToken(token->Type);
+
+	// 	if (token->Type == TokenIdentifier) {
+	// 		printf(" %.*s", (i32)token->Lexeme.SymbolLength, token->Lexeme.Symbol);
+	// 	} else if (token->Type == TokenNumber) {
+	// 		printf(" %lf", token->Number);
+	// 	}
+
+	// 	printf("\n");
+	// }
+
+	// if (TokenizerScan()) {
+	// 	return 1;
+	// }
+
+	// printf("Scanned!\n\n");
+
+	// DiagReport();
+
+	if (ParserInit()) {
 		return 1;
 	}
 
-	printf("Scanned!\n\n");
+	if (ParserParse()) {
+		return 1;
+	}
 
 	DiagReport();
+
+	printf("Parsed!\n\n");
+
+	ParserPrintAST((ASTNode*)g_parser.ASTArena.Blocks->Data);
 
 	if (DiagDeinit()) {
 		return 1;

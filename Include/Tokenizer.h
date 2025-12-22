@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Memory/StatArena.h"
 #include "Memory/SymbolTable.h"
 #include "Types.h"
 
@@ -57,11 +56,14 @@ typedef struct Tokenizer {
 	const char* LexemeCurrent;
 	usz SourceLine;
 	usz SourceLinePos;
-	StatArena ArenaTokens;
 	SymbolTable TableStrings;
+	Token LastReturnedToken;
+	bool HasLookahead;
 } Tokenizer;
 
 Result TokenizerInit();
 Result TokenizerScan();
+Result TokenizerNextToken(Token** token);
+Result TokenizerPeekToken(Token** token);
 
 extern Tokenizer g_tokenizer;

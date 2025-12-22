@@ -2,6 +2,7 @@
 
 #include "Memory/StatArena.h"
 #include "Memory/DynArena.h"
+#include "Memory/SymbolTable.h"
 #include "Types.h"
 #include "Tokenizer.h"
 
@@ -39,7 +40,7 @@ typedef struct ASTNode {
 		} Block;
 
 		struct {
-			Token* Operator;
+			TokenType Operator;
 			struct ASTNode* Operand;
 		} Unary;
 
@@ -49,15 +50,16 @@ typedef struct ASTNode {
 
 		struct {
 			struct ASTNode* Left;
-			Token* Operator;
+			TokenType Operator;
 			struct ASTNode* Right;
 		} Binary;
 
 		struct {
-			Token* Identifier;
-			Token* Type;
+			SymbolView Identifier;
+			SymbolView Type;
 			struct ASTNode* Expression;
 			bool IsConst;
+			bool HasType;
 		} VarDecl;
 
 		struct {
@@ -77,18 +79,18 @@ typedef struct ASTNode {
 		} IndexSuffix;
 
 		struct {
-			Token* Identifier;
+			SymbolView Identifier;
 			struct ASTNode* Index;
 			struct ASTNode* Expression;
 		} Assignment;
 
 		struct {
-			Token* Identifier;
+			SymbolView Identifier;
 			struct ASTNode* Index;
 		} Identifier;
 
 		struct {
-			Token* Identifier;
+			SymbolView Identifier;
 			struct ASTNode** CallArgs;
 			usz ArgCount;
 		} FunctionCall;
@@ -98,8 +100,11 @@ typedef struct ASTNode {
 typedef struct Parser {
 	StatArena ASTArena;
 	DynArena ArraysArena;
-	StatArenaIter Iter;
-	Token* CurToken;
 } Parser;
+
+Result ParserInit();
+Result ParserParse();
+void ParserPrintAST(const ASTNode* node);
+Result ParserDeinit();
 
 extern Parser g_parser;

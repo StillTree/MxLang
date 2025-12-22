@@ -4,6 +4,7 @@ Checks: |
   -bugprone-easily-swappable-parameters,
   clang-analyzer-*,
   misc-*,
+  -misc-no-recursion,
   modernize-*,
   performance-*,
   readability-*,
