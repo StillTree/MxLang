@@ -7,7 +7,7 @@ Parser g_parser = { 0 };
 static void ParserAdvance()
 {
 	Token* token;
-	TokenizerNextToken(&token);
+	Result result = TokenizerNextToken(&token);
 }
 
 static Token* ParserPeek()
@@ -30,7 +30,7 @@ static bool ParserMatch(TokenType type)
 {
 	Token* token = ParserPeek();
 
-	if (!token || token->Type != type) {
+	if (token->Type != type) {
 		return false;
 	}
 
@@ -40,10 +40,12 @@ static bool ParserMatch(TokenType type)
 
 static void ParserSynchronize()
 {
-	while (true) {
-		Token* token = ParserConsume();
+	ParserAdvance();
 
-		if (!token) {
+	while (true) {
+		Token* token = ParserPeek();
+
+		if (token->Type == TokenEof) {
 			return;
 		}
 
@@ -55,6 +57,8 @@ static void ParserSynchronize()
 		case TokenLeftCurlyBracket:
 			return;
 		default:
+			ParserAdvance();
+			break;
 		}
 	}
 }
@@ -147,7 +151,7 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 
 		if (!ParserMatch(TokenRightSquareBracket)) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_CHAR(']'));
+			DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR(']'));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
@@ -180,6 +184,7 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 static Result ParsePrimary(ASTNode** node)
 {
 	Token* token = ParserPeek();
+
 	if (token->Type == TokenNumber) {
 		ASTNode* number;
 		Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&number);
@@ -276,7 +281,7 @@ static Result ParsePrimary(ASTNode** node)
 
 			if (!ParserMatch(TokenRightSquareBracket)) {
 				// TODO: Source location
-				DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_CHAR(']'));
+				DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR(']'));
 				ParserSynchronize();
 				*node = nullptr;
 				return ResOk;
@@ -332,7 +337,7 @@ static Result ParsePrimary(ASTNode** node)
 
 			if (!ParserMatch(TokenRightSquareBracket)) {
 				// TODO: Source location
-				DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_CHAR(']'));
+				DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR(']'));
 				ParserSynchronize();
 				*node = nullptr;
 				return ResOk;
@@ -399,7 +404,7 @@ static Result ParsePrimary(ASTNode** node)
 	// printf("Unexpected token %s in primary\n", parser->Tokens[parser->CurrentToken].Lexeme);
 	// exit(1);
 	// TODO: Source location
-	DIAG_EMIT(DiagUnexpectedToken, 1, 1, DIAG_ARG_STRING("a"));
+	DIAG_EMIT(DiagUnexpectedToken, token->SourceLine, token->SourceLinePos, DIAG_ARG_STRING("a"));
 	ParserSynchronize();
 	*node = nullptr;
 	return ResOk;
@@ -737,7 +742,7 @@ static Result ParseExprOrAssignment(ASTNode** node)
 
 			if (!ParserMatch(TokenRightSquareBracket)) {
 				// TODO: Source location
-				DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_CHAR(']'));
+				DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR(']'));
 				ParserSynchronize();
 				*node = nullptr;
 				return ResOk;
@@ -864,7 +869,7 @@ static Result ParseVarDecl(ASTNode** node)
 	token = ParserPeek();
 	if (token->Type != TokenIdentifier) {
 		// TODO: Source location
-		DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING("identifier"));
+		DIAG_EMIT(DiagExpectedToken, token->SourceLine, token->SourceLinePos, DIAG_ARG_STRING("identifier"));
 		ParserSynchronize();
 		*node = nullptr;
 		return ResOk;
@@ -899,7 +904,8 @@ static Result ParseVarDecl(ASTNode** node)
 	if (!ParserMatch(TokenEqual)) {
 		if (!varDecl->Data.VarDecl.HasType) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING("assignment without explicit matrix shape"));
+			DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos,
+				DIAG_ARG_STRING("assignment without explicit matrix shape"));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
@@ -923,7 +929,7 @@ static Result ParseBlock(ASTNode** node)
 {
 	if (!ParserMatch(TokenLeftCurlyBracket)) {
 		// TODO: Source location
-		DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING("at block start"));
+		DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_STRING("at block start"));
 		ParserSynchronize();
 		*node = nullptr;
 		return ResOk;
@@ -949,10 +955,6 @@ static Result ParseBlock(ASTNode** node)
 			return result;
 		}
 
-		if (!statement) {
-			continue;
-		}
-
 		block->Data.Block.Nodes[i] = statement;
 
 		++i;
@@ -974,11 +976,6 @@ static Result ParseBlock(ASTNode** node)
 static Result ParseStatement(ASTNode** node)
 {
 	Token* token = ParserPeek();
-
-	if (!token) {
-		return ResErr;
-	}
-
 	switch (token->Type) {
 	case TokenConst:
 	case TokenLet:
@@ -1039,6 +1036,11 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 {
 	for (usz i = 0; i < indents; ++i) {
 		putchar(' ');
+	}
+
+	if (!node) {
+		printf("(error)");
+		return;
 	}
 
 	switch (node->Type) {

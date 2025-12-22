@@ -84,9 +84,15 @@ static bool TokenizerMatch(char expected)
 	return true;
 }
 
-static Result TokenizerAddToken(TokenType type, const SymbolView* lexeme, double number)
+static void TokenizerAddToken(TokenType type, const SymbolView* lexeme, double number)
 {
-	g_tokenizer.LastReturnedToken.SourceLinePos = g_tokenizer.SourceLinePos - (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
+	if (type == TokenEof) {
+		g_tokenizer.LastReturnedToken.SourceLinePos = (usz)(g_tokenizer.SourceEnd - g_source.Lines[g_tokenizer.SourceLine - 1] + 1);
+	} else {
+		g_tokenizer.LastReturnedToken.SourceLinePos
+			= g_tokenizer.SourceLinePos - (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
+	}
+
 	g_tokenizer.LastReturnedToken.SourceLine = g_tokenizer.SourceLine;
 	g_tokenizer.LastReturnedToken.Type = type;
 	g_tokenizer.LastReturnedToken.Number = number;
@@ -94,8 +100,6 @@ static Result TokenizerAddToken(TokenType type, const SymbolView* lexeme, double
 	if (type == TokenIdentifier) {
 		g_tokenizer.LastReturnedToken.Lexeme = *lexeme;
 	}
-
-	return ResOk;
 }
 
 inline static void TokenizerSkipDigit()
@@ -149,7 +153,7 @@ static void TokenizerSkipWhiteSpace()
 			g_tokenizer.SourceLinePos = 1;
 			++g_tokenizer.SourceLine;
 
-			g_source.Lines[g_tokenizer.SourceLine - 1] = g_tokenizer.LexemeCurrent;
+			g_source.Lines[g_tokenizer.SourceLine - 1] = g_tokenizer.LexemeCurrent + 1;
 			break;
 		default:
 			return;
@@ -162,9 +166,9 @@ static void TokenizerSkipWhiteSpace()
 Result TokenizerPeekToken(Token** token)
 {
 	if (!g_tokenizer.HasLookahead) {
-		TokenizerNextToken(token);
+		Result result = TokenizerNextToken(token);
 		g_tokenizer.HasLookahead = true;
-		return ResOk;
+		return result;
 	}
 
 	*token = &g_tokenizer.LastReturnedToken;
@@ -266,56 +270,10 @@ Result TokenizerNextToken(Token** token)
 		TokenizerAddToken(TokenTranspose, nullptr, 0);
 		*token = &g_tokenizer.LastReturnedToken;
 		return ResOk;
-	case ':': {
+	case ':':
 		TokenizerAddToken(TokenColon, nullptr, 0);
 		*token = &g_tokenizer.LastReturnedToken;
 		return ResOk;
-
-		while (isspace(TokenizerPeek(0))) {
-			TokenizerAdvance();
-		}
-
-		g_tokenizer.LexemeStart = g_tokenizer.LexemeCurrent;
-
-		if (!isdigit(TokenizerConsume())) {
-			DIAG_EMIT(DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_STRING("matrix shape"),
-				DIAG_ARG_CHAR(':'));
-
-			TokenizerSkipAlphanumeric();
-
-			break;
-		}
-
-		TokenizerSkipDigit();
-
-		if (!TokenizerMatch('x')) {
-			DIAG_EMIT(DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_STRING("matrix shape"),
-				DIAG_ARG_CHAR(':'));
-
-			TokenizerSkipAlphanumeric();
-
-			break;
-		}
-
-		if (!isdigit(TokenizerConsume())) {
-			DIAG_EMIT(DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_STRING("matrix shape"),
-				DIAG_ARG_CHAR(':'));
-
-			TokenizerSkipAlphanumeric();
-
-			break;
-		}
-
-		TokenizerSkipDigit();
-
-		usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
-		SymbolView lexeme;
-		Result result = SymbolTableAdd(&g_tokenizer.TableStrings, g_tokenizer.LexemeStart, lexemeLength, &lexeme);
-		if (result) {
-			return result;
-		}
-		TokenizerAddToken(TokenMatrixShape, &lexeme, 0);
-	} break;
 	case '=':
 		if (TokenizerMatch('=')) {
 			TokenizerAddToken(TokenEqualEqual, nullptr, 0);
@@ -327,12 +285,15 @@ Result TokenizerNextToken(Token** token)
 	case '!':
 		if (TokenizerMatch('=')) {
 			TokenizerAddToken(TokenNotEqual, nullptr, 0);
+			*token = &g_tokenizer.LastReturnedToken;
+			return ResOk;
 		} else {
 			DIAG_EMIT(
 				DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_CHAR('='), DIAG_ARG_CHAR('!'));
+			TokenizerAddToken(TokenError, nullptr, 0);
+			*token = &g_tokenizer.LastReturnedToken;
+			return ResOk;
 		}
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
 	default:
 		if (isdigit(c)) {
 			while (isdigit(TokenizerPeek(0))) {
@@ -379,11 +340,9 @@ Result TokenizerNextToken(Token** token)
 	}
 
 	DIAG_EMIT(DiagUnexpectedToken, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_CHAR(c));
-	*token = nullptr;
+	TokenizerAddToken(TokenError, nullptr, 0);
+	*token = &g_tokenizer.LastReturnedToken;
 	return ResOk;
 }
 
-Result TokenizerDeinit()
-{
-	return SymbolTableDeinit(&g_tokenizer.TableStrings);
-}
+Result TokenizerDeinit() { return SymbolTableDeinit(&g_tokenizer.TableStrings); }

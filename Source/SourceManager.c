@@ -25,13 +25,14 @@ static Result ReadEntireFile(const char* filePath, const char** contents, usz* l
 
 	fseek(file, 0, SEEK_SET);
 
-	char* fileBuffer = malloc((usz)fileSize);
+	char* fileBuffer = malloc((usz)fileSize + 1);
 	if (!fileBuffer) {
 		fclose(file);
 		return ResOutOfMemory;
 	}
 
-	fread(fileBuffer, 1, (usz)fileSize, file);
+	usz readBytes = fread(fileBuffer, 1, (usz)fileSize, file);
+	fileBuffer[readBytes] = '\0';
 
 	*contents = fileBuffer;
 	fclose(file);

@@ -37,7 +37,8 @@ typedef enum TokenType : u8 {
 	TokenLessEqual,
 	TokenGreater,
 	TokenGreaterEqual,
-	TokenEof
+	TokenEof,
+	TokenError
 } TokenType;
 
 typedef struct Token {
