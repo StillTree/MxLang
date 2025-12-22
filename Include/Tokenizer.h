@@ -65,5 +65,6 @@ Result TokenizerInit();
 Result TokenizerScan();
 Result TokenizerNextToken(Token** token);
 Result TokenizerPeekToken(Token** token);
+Result TokenizerDeinit();
 
 extern Tokenizer g_tokenizer;

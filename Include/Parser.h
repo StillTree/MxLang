@@ -104,7 +104,7 @@ typedef struct Parser {
 
 Result ParserInit();
 Result ParserParse();
-void ParserPrintAST(const ASTNode* node);
+void ParserPrintAST(const ASTNode* node, usz indents);
 Result ParserDeinit();
 
 extern Parser g_parser;

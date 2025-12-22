@@ -1035,8 +1035,12 @@ Result ParserParse()
 	return ResOk;
 }
 
-void ParserPrintAST(const ASTNode* node)
+void ParserPrintAST(const ASTNode* node, usz indents)
 {
+	for (usz i = 0; i < indents; ++i) {
+		putchar(' ');
+	}
+
 	switch (node->Type) {
 	case ASTNodeNumber:
 		printf("%lf", node->Data.Number);
@@ -1046,7 +1050,7 @@ void ParserPrintAST(const ASTNode* node)
 		for (size_t i = 0; i < node->Data.Literal.Height; ++i) {
 			printf("(row ");
 			for (size_t j = 0; j < node->Data.Literal.Width; ++j) {
-				ParserPrintAST(node->Data.Literal.Matrix[(i * node->Data.Literal.Width) + j]);
+				ParserPrintAST(node->Data.Literal.Matrix[(i * node->Data.Literal.Width) + j], 0);
 
 				if (j < node->Data.Literal.Width - 1) {
 					printf(" ");
@@ -1059,27 +1063,29 @@ void ParserPrintAST(const ASTNode* node)
 	case ASTNodeBlock:
 		printf("(block\n");
 		for (size_t i = 0; i < node->Data.Block.NodeCount; ++i) {
-			printf("  ");
-			ParserPrintAST(node->Data.Block.Nodes[i]);
+			ParserPrintAST(node->Data.Block.Nodes[i], indents + 2);
 			printf("\n");
 		}
-		printf(")\n");
+		for (usz i = 0; i < indents; ++i) {
+			putchar(' ');
+		}
+		printf(")");
 		break;
 	case ASTNodeUnary:
 		printf("(un %u ", node->Data.Unary.Operator);
-		ParserPrintAST(node->Data.Unary.Operand);
+		ParserPrintAST(node->Data.Unary.Operand, 0);
 		printf(")");
 		break;
 	case ASTNodeGrouping:
 		printf("(grouping ");
-		ParserPrintAST(node->Data.Grouping.Expression);
+		ParserPrintAST(node->Data.Grouping.Expression, 0);
 		printf(")");
 		break;
 	case ASTNodeBinary:
 		printf("(bin %u ", node->Data.Binary.Operator);
-		ParserPrintAST(node->Data.Binary.Left);
+		ParserPrintAST(node->Data.Binary.Left, 0);
 		printf(" ");
-		ParserPrintAST(node->Data.Binary.Right);
+		ParserPrintAST(node->Data.Binary.Right, 0);
 		printf(")");
 		break;
 	case ASTNodeVarDecl:
@@ -1093,59 +1099,65 @@ void ParserPrintAST(const ASTNode* node)
 			printf(": %.*s", (i32)node->Data.VarDecl.Type.SymbolLength, node->Data.VarDecl.Type.Symbol);
 		}
 		printf(" = ");
-		ParserPrintAST(node->Data.VarDecl.Expression);
+		ParserPrintAST(node->Data.VarDecl.Expression, 0);
 		printf(")");
 		break;
 	case ASTNodeWhileStmt:
 		printf("(while ");
-		ParserPrintAST(node->Data.WhileStmt.Condition);
-		printf(" ");
-		ParserPrintAST(node->Data.WhileStmt.Body);
-		printf(" )");
+		ParserPrintAST(node->Data.WhileStmt.Condition, 0);
+		printf("\n");
+		ParserPrintAST(node->Data.WhileStmt.Body, indents + 2);
+		printf("\n");
+		for (usz i = 0; i < indents; ++i) {
+			putchar(' ');
+		}
+		printf(")");
 		break;
 	case ASTNodeIfStmt:
 		printf("(if ");
-		ParserPrintAST(node->Data.IfStmt.Condition);
-		printf(" then ");
-		ParserPrintAST(node->Data.IfStmt.ThenBlock);
+		ParserPrintAST(node->Data.IfStmt.Condition, 0);
+		printf(" then\n");
+		ParserPrintAST(node->Data.IfStmt.ThenBlock, indents + 2);
 		if (node->Data.IfStmt.ElseBlock) {
-			printf(" else ");
-			ParserPrintAST(node->Data.IfStmt.ElseBlock);
+			printf(" else\n");
+			ParserPrintAST(node->Data.IfStmt.ElseBlock, indents + 2);
 		}
-		printf(" )");
+		printf("\n");
+		for (usz i = 0; i < indents; ++i) {
+			putchar(' ');
+		}
+		printf(")");
 		break;
 	case ASTNodeIndexSuffix:
 		printf("(index ");
-		ParserPrintAST(node->Data.IndexSuffix.I);
+		ParserPrintAST(node->Data.IndexSuffix.I, 0);
 		if (node->Data.IndexSuffix.J) {
 			printf(" ");
-			ParserPrintAST(node->Data.IndexSuffix.J);
+			ParserPrintAST(node->Data.IndexSuffix.J, 0);
 		}
 		printf(")");
 		break;
 	case ASTNodeAssignment:
-		printf("(assignment %.*s", (i32)node->Data.Assignment.Identifier.SymbolLength,
-			node->Data.Assignment.Identifier.Symbol);
+		printf("(assignment %.*s", (i32)node->Data.Assignment.Identifier.SymbolLength, node->Data.Assignment.Identifier.Symbol);
 		if (node->Data.Assignment.Index) {
-			ParserPrintAST(node->Data.Assignment.Index);
+			ParserPrintAST(node->Data.Assignment.Index, 0);
 		}
 		printf(" ");
-		ParserPrintAST(node->Data.Assignment.Expression);
+		ParserPrintAST(node->Data.Assignment.Expression, 0);
 		printf(")");
 		break;
 	case ASTNodeIdentifier:
 		printf("(ident %.*s", (i32)node->Data.Identifier.Identifier.SymbolLength, node->Data.Identifier.Identifier.Symbol);
 		if (node->Data.Identifier.Index) {
-			ParserPrintAST(node->Data.Identifier.Index);
+			ParserPrintAST(node->Data.Identifier.Index, 0);
 		}
 		printf(")");
 		break;
 	case ASTNodeFunctionCall:
-		printf(
-			"(call %.*s", (i32)node->Data.FunctionCall.Identifier.SymbolLength, node->Data.FunctionCall.Identifier.Symbol);
+		printf("(call %.*s", (i32)node->Data.FunctionCall.Identifier.SymbolLength, node->Data.FunctionCall.Identifier.Symbol);
 		for (size_t i = 0; i < node->Data.FunctionCall.ArgCount; ++i) {
-			printf("(arg ");
-			ParserPrintAST(node->Data.FunctionCall.CallArgs[i]);
+			printf(" (arg ");
+			ParserPrintAST(node->Data.FunctionCall.CallArgs[i], 0);
 			printf(")");
 		}
 		printf(")");

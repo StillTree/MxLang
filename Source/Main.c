@@ -135,34 +135,6 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	// while (true) {
-	// 	Token* token;
-	// 	TokenizerNextToken(&token);
-
-	// 	if (!token) {
-	// 		break;
-	// 	}
-
-	// 	printf("Token!: ");
-	// 	PrintToken(token->Type);
-
-	// 	if (token->Type == TokenIdentifier) {
-	// 		printf(" %.*s", (i32)token->Lexeme.SymbolLength, token->Lexeme.Symbol);
-	// 	} else if (token->Type == TokenNumber) {
-	// 		printf(" %lf", token->Number);
-	// 	}
-
-	// 	printf("\n");
-	// }
-
-	// if (TokenizerScan()) {
-	// 	return 1;
-	// }
-
-	// printf("Scanned!\n\n");
-
-	// DiagReport();
-
 	if (ParserInit()) {
 		return 1;
 	}
@@ -175,7 +147,15 @@ int main(int argc, char* argv[])
 
 	printf("Parsed!\n\n");
 
-	ParserPrintAST((ASTNode*)g_parser.ASTArena.Blocks->Data);
+	ParserPrintAST((ASTNode*)g_parser.ASTArena.Blocks->Data, 0);
+
+	if (ParserDeinit()) {
+		return 1;
+	}
+
+	if (TokenizerDeinit()) {
+		return 1;
+	}
 
 	if (DiagDeinit()) {
 		return 1;

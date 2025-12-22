@@ -86,12 +86,6 @@ static bool TokenizerMatch(char expected)
 
 static Result TokenizerAddToken(TokenType type, const SymbolView* lexeme, double number)
 {
-	// Token* token;
-	// Result result = StatArenaAlloc(&g_tokenizer.ArenaTokens, (void**)&token);
-	// if (result) {
-	// 	return result;
-	// }
-
 	g_tokenizer.LastReturnedToken.SourceLinePos = g_tokenizer.SourceLinePos - (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
 	g_tokenizer.LastReturnedToken.SourceLine = g_tokenizer.SourceLine;
 	g_tokenizer.LastReturnedToken.Type = type;
@@ -120,14 +114,8 @@ inline static void TokenizerSkipAlphanumeric()
 
 Result TokenizerInit()
 {
-	// Result result = StatArenaInit(&g_tokenizer.ArenaTokens, sizeof(Token));
-	// if (result) {
-	// 	return result;
-	// }
-
 	Result result = SymbolTableInit(&g_tokenizer.TableStrings);
 	if (result) {
-		// StatArenaDeinit(&g_tokenizer.ArenaTokens);
 		return result;
 	}
 
@@ -395,195 +383,7 @@ Result TokenizerNextToken(Token** token)
 	return ResOk;
 }
 
-// Result TokenizerScan()
-// {
-// 	while (g_tokenizer.LexemeCurrent < g_tokenizer.SourceEnd) {
-// 		g_tokenizer.LexemeStart = g_tokenizer.LexemeCurrent;
-//
-// 		char c = TokenizerConsume();
-// 		switch (c) {
-// 		case '#':
-// 			while (TokenizerPeek(0) != '\0' && TokenizerPeek(0) != '\n') {
-// 				TokenizerAdvance();
-// 			}
-// 			break;
-// 		case '(':
-// 			TokenizerAddToken(TokenLeftRoundBracket, nullptr, 0);
-// 			break;
-// 		case ')':
-// 			TokenizerAddToken(TokenRightRoundBracket, nullptr, 0);
-// 			break;
-// 		case '[':
-// 			TokenizerAddToken(TokenLeftSquareBracket, nullptr, 0);
-// 			break;
-// 		case ']':
-// 			TokenizerAddToken(TokenRightSquareBracket, nullptr, 0);
-// 			break;
-// 		case '<':
-// 			if (TokenizerMatch('=')) {
-// 				TokenizerAddToken(TokenLessEqual, nullptr, 0);
-// 			} else if (TokenizerMatch('<')) {
-// 				TokenizerAddToken(TokenLeftVectorBracket, nullptr, 0);
-// 			} else {
-// 				TokenizerAddToken(TokenLess, nullptr, 0);
-// 			}
-// 			break;
-// 		case '>':
-// 			if (TokenizerMatch('=')) {
-// 				TokenizerAddToken(TokenGreaterEqual, nullptr, 0);
-// 			} else if (TokenizerMatch('>')) {
-// 				TokenizerAddToken(TokenRightVectorBracket, nullptr, 0);
-// 			} else {
-// 				TokenizerAddToken(TokenGreater, nullptr, 0);
-// 			}
-// 			break;
-// 		case '{':
-// 			TokenizerAddToken(TokenLeftCurlyBracket, nullptr, 0);
-// 			break;
-// 		case '}':
-// 			TokenizerAddToken(TokenRightCurlyBracket, nullptr, 0);
-// 			break;
-// 		case ',':
-// 			TokenizerAddToken(TokenComma, nullptr, 0);
-// 			break;
-// 		case '+':
-// 			TokenizerAddToken(TokenAdd, nullptr, 0);
-// 			break;
-// 		case '-':
-// 			TokenizerAddToken(TokenSubtract, nullptr, 0);
-// 			break;
-// 		case '*':
-// 			TokenizerAddToken(TokenMultiply, nullptr, 0);
-// 			break;
-// 		case '/':
-// 			TokenizerAddToken(TokenDivide, nullptr, 0);
-// 			break;
-// 		case '^':
-// 			TokenizerAddToken(TokenToPower, nullptr, 0);
-// 			break;
-// 		case '\'':
-// 			TokenizerAddToken(TokenTranspose, nullptr, 0);
-// 			break;
-// 		case ':': {
-// 			TokenizerAddToken(TokenColon, nullptr, 0);
-//
-// 			while (isspace(TokenizerPeek(0))) {
-// 				TokenizerAdvance();
-// 			}
-//
-// 			g_tokenizer.LexemeStart = g_tokenizer.LexemeCurrent;
-//
-// 			if (!isdigit(TokenizerConsume())) {
-// 				DIAG_EMIT(DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_STRING("matrix shape"),
-// 					DIAG_ARG_CHAR(':'));
-//
-// 				TokenizerSkipAlphanumeric();
-//
-// 				break;
-// 			}
-//
-// 			TokenizerSkipDigit();
-//
-// 			if (!TokenizerMatch('x')) {
-// 				DIAG_EMIT(DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_STRING("matrix shape"),
-// 					DIAG_ARG_CHAR(':'));
-//
-// 				TokenizerSkipAlphanumeric();
-//
-// 				break;
-// 			}
-//
-// 			if (!isdigit(TokenizerConsume())) {
-// 				DIAG_EMIT(DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_STRING("matrix shape"),
-// 					DIAG_ARG_CHAR(':'));
-//
-// 				TokenizerSkipAlphanumeric();
-//
-// 				break;
-// 			}
-//
-// 			TokenizerSkipDigit();
-//
-// 			usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
-// 			SymbolView lexeme;
-// 			Result result = SymbolTableAdd(&g_tokenizer.TableStrings, g_tokenizer.LexemeStart, lexemeLength, &lexeme);
-// 			if (result) {
-// 				return result;
-// 			}
-// 			TokenizerAddToken(TokenMatrixShape, &lexeme, 0);
-// 		} break;
-// 		case '=':
-// 			if (TokenizerMatch('=')) {
-// 				TokenizerAddToken(TokenEqualEqual, nullptr, 0);
-// 			} else {
-// 				TokenizerAddToken(TokenEqual, nullptr, 0);
-// 			}
-// 			break;
-// 		case '!':
-// 			if (TokenizerMatch('=')) {
-// 				TokenizerAddToken(TokenNotEqual, nullptr, 0);
-// 			} else {
-// 				DIAG_EMIT(
-// 					DiagExpectedTokenAfter, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_CHAR('='), DIAG_ARG_CHAR('!'));
-// 			}
-// 			break;
-// 		case ' ':
-// 		case '\r':
-// 		case '\t':
-// 			break;
-// 		case '\n':
-// 			g_tokenizer.SourceLinePos = 1;
-// 			++g_tokenizer.SourceLine;
-//
-// 			g_source.Lines[g_tokenizer.SourceLine - 1] = g_tokenizer.LexemeCurrent;
-// 			break;
-// 		default:
-// 			if (isdigit(c)) {
-// 				while (isdigit(TokenizerPeek(0))) {
-// 					TokenizerAdvance();
-// 				}
-//
-// 				if (TokenizerMatch('.') && isdigit(TokenizerPeek(0))) {
-// 					TokenizerSkipDigit();
-// 				}
-//
-// 				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
-// 				TokenizerAddToken(TokenNumber, nullptr, ParseDouble(g_tokenizer.LexemeStart, lexemeLength));
-// 			} else if (isalpha(c)) {
-// 				TokenizerSkipAlphanumeric();
-//
-// 				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
-//
-// 				if (lexemeLength == 3 && memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
-// 					TokenizerAddToken(TokenLet, nullptr, 0);
-// 				} else if (lexemeLength == 5 && memcmp(g_tokenizer.LexemeStart, "const", lexemeLength) == 0) {
-// 					TokenizerAddToken(TokenConst, nullptr, 0);
-// 				} else if (lexemeLength == 2 && memcmp(g_tokenizer.LexemeStart, "if", lexemeLength) == 0) {
-// 					TokenizerAddToken(TokenIf, nullptr, 0);
-// 				} else if (lexemeLength == 4 && memcmp(g_tokenizer.LexemeStart, "else", lexemeLength) == 0) {
-// 					TokenizerAddToken(TokenElse, nullptr, 0);
-// 				} else if (lexemeLength == 5 && memcmp(g_tokenizer.LexemeStart, "while", lexemeLength) == 0) {
-// 					TokenizerAddToken(TokenWhile, nullptr, 0);
-// 				} else if (lexemeLength == 3 && memcmp(g_tokenizer.LexemeStart, "and", lexemeLength) == 0) {
-// 					TokenizerAddToken(TokenAnd, nullptr, 0);
-// 				} else if (lexemeLength == 2 && memcmp(g_tokenizer.LexemeStart, "or", lexemeLength) == 0) {
-// 					TokenizerAddToken(TokenOr, nullptr, 0);
-// 				} else {
-// 					SymbolView lexeme;
-// 					Result result = SymbolTableAdd(&g_tokenizer.TableStrings, g_tokenizer.LexemeStart, lexemeLength, &lexeme);
-// 					if (result) {
-// 						return result;
-// 					}
-// 					TokenizerAddToken(TokenIdentifier, &lexeme, 0);
-// 				}
-// 			} else {
-// 				DIAG_EMIT(DiagUnexpectedToken, g_tokenizer.SourceLine, g_tokenizer.SourceLinePos - 1, DIAG_ARG_CHAR(c));
-// 			}
-// 			break;
-// 		}
-// 	}
-//
-// 	TokenizerAddToken(TokenEof, nullptr, 0);
-//
-// 	return ResOk;
-// }
+Result TokenizerDeinit()
+{
+	return SymbolTableDeinit(&g_tokenizer.TableStrings);
+}
