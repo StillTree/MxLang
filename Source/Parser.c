@@ -928,8 +928,7 @@ static Result ParseVarDecl(ASTNode** node)
 static Result ParseBlock(ASTNode** node)
 {
 	if (!ParserMatch(TokenLeftCurlyBracket)) {
-		// TODO: Source location
-		DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_STRING("at block start"));
+		DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR('{'));
 		ParserSynchronize();
 		*node = nullptr;
 		return ResOk;
@@ -949,6 +948,14 @@ static Result ParseBlock(ASTNode** node)
 
 	usz i = 0;
 	while (!ParserMatch(TokenRightCurlyBracket)) {
+		Token* token = ParserPeek();
+		if (token->Type == TokenEof) {
+			DIAG_EMIT(DiagExpectedToken, token->SourceLine, token->SourceLinePos, DIAG_ARG_CHAR('}'));
+			ParserSynchronize();
+			*node = nullptr;
+			return ResOk;
+		}
+
 		ASTNode* statement;
 		result = ParseStatement(&statement);
 		if (result) {
@@ -961,13 +968,6 @@ static Result ParseBlock(ASTNode** node)
 	}
 
 	block->Data.Block.NodeCount = i;
-
-	// if (!ParserMatch(TokenRightCurlyBracket)) {
-	// 	DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING("at block end"));
-	// 	ParserSynchronize();
-	// 	*node = nullptr;
-	// 	return ResOk;
-	// }
 
 	*node = block;
 	return ResOk;

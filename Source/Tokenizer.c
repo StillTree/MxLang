@@ -60,7 +60,7 @@ static char TokenizerConsume()
 static void TokenizerAdvance()
 {
 	++g_tokenizer.SourceLinePos;
-	g_tokenizer.LexemeCurrent++;
+	++g_tokenizer.LexemeCurrent;
 }
 
 static char TokenizerPeek(usz lookahead)
@@ -150,10 +150,11 @@ static void TokenizerSkipWhiteSpace()
 		case '\t':
 			break;
 		case '\n':
-			g_tokenizer.SourceLinePos = 1;
+			g_source.Lines[g_tokenizer.SourceLine] = g_tokenizer.LexemeCurrent + 1;
+
+			g_tokenizer.SourceLinePos = 0;
 			++g_tokenizer.SourceLine;
 
-			g_source.Lines[g_tokenizer.SourceLine - 1] = g_tokenizer.LexemeCurrent + 1;
 			break;
 		default:
 			return;

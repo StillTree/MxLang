@@ -109,6 +109,9 @@ void PrintToken(TokenType t)
 	case TokenEof:
 		printf("TokenEof");
 		break;
+	case TokenError:
+		printf("TokenError");
+		break;
 	}
 }
 
