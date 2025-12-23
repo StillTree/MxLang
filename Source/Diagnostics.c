@@ -126,14 +126,23 @@ void DiagEmit(DiagType type, usz sourceLine, usz sourceLinePos, const DiagArg* a
 
 void DiagReport()
 {
+	usz count = 0;
 	StatArenaIter iter = { 0 };
 	while (StatArenaIterNext(&g_diagState.Arena, &iter) == ResOk) {
 		DiagPrint(iter.Item);
+
+		++count;
 	}
 
 	assert(StatArenaMarkUndo(&g_diagState.Arena, &g_diagState.Mark) == ResOk);
 
 	assert(StatArenaMarkSet(&g_diagState.Arena, &g_diagState.Mark) == ResOk);
+
+	if (count > 1) {
+		printf("Stopping now, %zu errors emitted\n", count);
+	} else if (count > 0) {
+		printf("Stopping now, %zu error emitted\n", count);
+	}
 }
 
 Result DiagDeinit() { return StatArenaDeinit(&g_diagState.Arena); }

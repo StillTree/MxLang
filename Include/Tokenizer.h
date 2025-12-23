@@ -3,8 +3,8 @@
 #include "Memory/SymbolTable.h"
 #include "Types.h"
 
-typedef enum TokenType : u8 {
-	TokenLeftRoundBracket,
+typedef enum TokenType : u16 {
+	TokenLeftRoundBracket = 256,
 	TokenRightRoundBracket,
 	TokenLeftSquareBracket,
 	TokenRightSquareBracket,
@@ -41,11 +41,17 @@ typedef enum TokenType : u8 {
 	TokenError
 } TokenType;
 
+typedef struct MatrixShape {
+	u64 Height;
+	u64 Width;
+} MatrixShape;
+
 typedef struct Token {
 	TokenType Type;
 	union {
 		SymbolView Lexeme;
 		double Number;
+		MatrixShape MatrixShape;
 	};
 	usz SourceLine;
 	usz SourceLinePos;

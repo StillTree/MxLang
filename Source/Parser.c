@@ -246,9 +246,7 @@ static Result ParsePrimary(ASTNode** node)
 		return ParseIdentifierPrimary(node);
 	}
 
-	if (token->Type == TokenLeftSquareBracket) {
-		ParserAdvance();
-
+	if (ParserMatch(TokenLeftSquareBracket)) {
 		ASTNode* matrixLit;
 		Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&matrixLit);
 		if (result) {
@@ -888,24 +886,24 @@ static Result ParseVarDecl(ASTNode** node)
 	ParserAdvance();
 
 	if (ParserMatch(TokenColon)) {
-		token = ParserPeek();
+		token = ParserConsume();
 		if (token->Type != TokenMatrixShape) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING("matrix shape declaration"));
+			DIAG_EMIT(
+				DiagExpectedToken, token->SourceLine, token->SourceLinePos, DIAG_ARG_STRING("matrix shape declaration"));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
 		}
 
-		varDecl->Data.VarDecl.Type = token->Lexeme;
+		varDecl->Data.VarDecl.Type = token->MatrixShape;
 		varDecl->Data.VarDecl.HasType = true;
 	}
 
 	if (!ParserMatch(TokenEqual)) {
 		if (!varDecl->Data.VarDecl.HasType) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos,
-				DIAG_ARG_STRING("assignment without explicit matrix shape"));
+			DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR(':'));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
@@ -1098,7 +1096,7 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 		}
 		printf("%.*s", (i32)node->Data.VarDecl.Identifier.SymbolLength, node->Data.VarDecl.Identifier.Symbol);
 		if (node->Data.VarDecl.HasType) {
-			printf(": %.*s", (i32)node->Data.VarDecl.Type.SymbolLength, node->Data.VarDecl.Type.Symbol);
+			printf(": %llux%llu", node->Data.VarDecl.Type.Height, node->Data.VarDecl.Type.Width);
 		}
 		printf(" = ");
 		ParserPrintAST(node->Data.VarDecl.Expression, 0);

@@ -56,7 +56,7 @@ typedef struct ASTNode {
 
 		struct {
 			SymbolView Identifier;
-			SymbolView Type;
+			MatrixShape Type;
 			struct ASTNode* Expression;
 			bool IsConst;
 			bool HasType;
