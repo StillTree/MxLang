@@ -889,8 +889,7 @@ static Result ParseVarDecl(ASTNode** node)
 		token = ParserConsume();
 		if (token->Type != TokenMatrixShape) {
 			// TODO: Source location
-			DIAG_EMIT(
-				DiagExpectedToken, token->SourceLine, token->SourceLinePos, DIAG_ARG_STRING("matrix shape declaration"));
+			DIAG_EMIT(DiagExpectedToken, token->SourceLine, token->SourceLinePos, DIAG_ARG_STRING("matrix shape declaration"));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
@@ -917,6 +916,20 @@ static Result ParseVarDecl(ASTNode** node)
 	result = ParseExpression(&varDecl->Data.VarDecl.Expression);
 	if (result) {
 		return result;
+	}
+
+	if (varDecl->Data.VarDecl.Expression) {
+		if (!varDecl->Data.VarDecl.HasType) {
+			varDecl->Data.VarDecl.Type.Height = varDecl->Data.VarDecl.Expression->Data.Literal.Height;
+			varDecl->Data.VarDecl.Type.Width = varDecl->Data.VarDecl.Expression->Data.Literal.Width;
+		} else if (varDecl->Data.VarDecl.Type.Height != varDecl->Data.VarDecl.Expression->Data.Literal.Height
+			|| varDecl->Data.VarDecl.Type.Width != varDecl->Data.VarDecl.Expression->Data.Literal.Width) {
+			// TODO: Source location
+			DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING("type mismatch"));
+			ParserSynchronize();
+			*node = nullptr;
+			return ResOk;
+		}
 	}
 
 	*node = varDecl;

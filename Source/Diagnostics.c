@@ -124,7 +124,7 @@ void DiagEmit(DiagType type, usz sourceLine, usz sourceLinePos, const DiagArg* a
 	}
 }
 
-void DiagReport()
+usz DiagReport()
 {
 	usz count = 0;
 	StatArenaIter iter = { 0 };
@@ -143,6 +143,8 @@ void DiagReport()
 	} else if (count > 0) {
 		printf("Stopping now, %zu error emitted\n", count);
 	}
+
+	return count;
 }
 
 Result DiagDeinit() { return StatArenaDeinit(&g_diagState.Arena); }

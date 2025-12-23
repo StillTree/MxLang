@@ -35,7 +35,9 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	DiagReport();
+	usz errCount = DiagReport();
+	if (errCount == 0) {
+	}
 
 	printf("Parsed!\n\n");
 

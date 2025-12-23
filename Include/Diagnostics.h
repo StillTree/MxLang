@@ -34,7 +34,7 @@ typedef struct DiagState {
 
 Result DiagInit();
 void DiagEmit(DiagType type, usz sourceLine, usz sourceLinePos, const DiagArg* args, usz argCount);
-void DiagReport();
+usz DiagReport();
 Result DiagDeinit();
 
 extern DiagState g_diagState;
