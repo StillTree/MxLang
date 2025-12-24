@@ -1,9 +1,11 @@
-let a: 2x2 = [1 2][3 4]
+let let let
+
+let a = 10
 
 {
 	let a = 123
 
-	let b = 10
+	b = 10
 }
 
 display(b)

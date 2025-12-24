@@ -138,7 +138,7 @@ static Result SymbolBind(ASTNode* node)
 		Result result = BindingLookup(g_typeChecker.CurScope, node->Assignment.Identifier.Symbol, &id);
 		if (result) {
 			DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("undeclared variable used"));
-			return result;
+			return ResOk;
 		}
 
 		printf("Bound ID: %.*s -> %zu\n", (i32)node->Assignment.Identifier.SymbolLength, node->Assignment.Identifier.Symbol, id);
