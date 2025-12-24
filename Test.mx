@@ -1,1 +1,9 @@
 let a: 2x2 = [1 2][3 4]
+
+{
+	let a = 123
+
+	let b = 10
+}
+
+display(b)

@@ -83,6 +83,7 @@ static Result ParseIdentifierPrimary(ASTNode** node);
 
 static Result ParseIdentifierPrimary(ASTNode** node)
 {
+	SourceLoc loc = ParserPeek()->Loc;
 	SymbolView identifier = ParserConsume()->Lexeme;
 
 	// A function call
@@ -94,8 +95,9 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 		}
 
 		functionCall->Type = ASTNodeFunctionCall;
-		functionCall->Data.FunctionCall.Identifier = identifier;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&functionCall->Data.FunctionCall.CallArgs, 8 * sizeof(ASTNode*));
+		functionCall->Loc = loc;
+		functionCall->FunctionCall.Identifier = identifier;
+		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&functionCall->FunctionCall.CallArgs, 8 * sizeof(ASTNode*));
 		if (result) {
 			return result;
 		}
@@ -112,7 +114,7 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 				}
 			}
 
-			result = ParseExpression(&functionCall->Data.FunctionCall.CallArgs[i]);
+			result = ParseExpression(&functionCall->FunctionCall.CallArgs[i]);
 			if (result) {
 				return result;
 			}
@@ -126,7 +128,7 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 			*node = nullptr;
 			return ResOk;
 		}
-		functionCall->Data.FunctionCall.ArgCount = i;
+		functionCall->FunctionCall.ArgCount = i;
 
 		*node = functionCall;
 		return ResOk;
@@ -151,7 +153,7 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 
 		if (!ParserMatch(TokenRightSquareBracket)) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR(']'));
+			DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc.Line, ParserPeek()->Loc.LinePos, DIAG_ARG_CHAR(']'));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
@@ -163,8 +165,8 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 		}
 
 		indexSuffix->Type = ASTNodeIndexSuffix;
-		indexSuffix->Data.IndexSuffix.I = i;
-		indexSuffix->Data.IndexSuffix.J = j;
+		indexSuffix->IndexSuffix.I = i;
+		indexSuffix->IndexSuffix.J = j;
 	}
 
 	ASTNode* astIdentifier;
@@ -174,8 +176,9 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 	}
 
 	astIdentifier->Type = ASTNodeIdentifier;
-	astIdentifier->Data.Identifier.Identifier = identifier;
-	astIdentifier->Data.Identifier.Index = indexSuffix;
+	astIdentifier->Loc = loc;
+	astIdentifier->Identifier.Identifier = identifier;
+	astIdentifier->Identifier.Index = indexSuffix;
 
 	*node = astIdentifier;
 	return ResOk;
@@ -184,6 +187,7 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 static Result ParsePrimary(ASTNode** node)
 {
 	Token* token = ParserPeek();
+	SourceLoc loc = token->Loc;
 
 	if (token->Type == TokenNumber) {
 		ASTNode* number;
@@ -193,22 +197,24 @@ static Result ParsePrimary(ASTNode** node)
 		}
 
 		number->Type = ASTNodeLiteral;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&number->Data.Literal.Matrix, sizeof(ASTNode*));
+		number->Loc = loc;
+		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&number->Literal.Matrix, sizeof(ASTNode*));
 		if (result) {
 			return result;
 		}
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&number->Data.Literal.Matrix[0]);
+		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&number->Literal.Matrix[0]);
 		if (result) {
 			return result;
 		}
 
 		ParserAdvance();
 
-		number->Data.Literal.Matrix[0]->Type = ASTNodeNumber;
-		number->Data.Literal.Matrix[0]->Data.Number = token->Number;
-		number->Data.Literal.Width = 1;
-		number->Data.Literal.Height = 1;
+		number->Literal.Matrix[0]->Type = ASTNodeNumber;
+		number->Literal.Matrix[0]->Loc = loc;
+		number->Literal.Matrix[0]->Number = token->Number;
+		number->Literal.Shape.Width = 1;
+		number->Literal.Shape.Height = 1;
 
 		*node = number;
 		return ResOk;
@@ -228,11 +234,12 @@ static Result ParsePrimary(ASTNode** node)
 		}
 
 		grouping->Type = ASTNodeGrouping;
-		grouping->Data.Grouping.Expression = expression;
+		grouping->Loc = loc;
+		grouping->Grouping.Expression = expression;
 
 		if (!ParserMatch(TokenRightRoundBracket)) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_CHAR('a'));
+			DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc.Line, ParserPeek()->Loc.LinePos, DIAG_ARG_CHAR(')'));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
@@ -254,14 +261,16 @@ static Result ParsePrimary(ASTNode** node)
 		}
 
 		matrixLit->Type = ASTNodeLiteral;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&matrixLit->Data.Literal.Matrix, 64 * sizeof(ASTNode*));
+		matrixLit->Loc = loc;
+		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&matrixLit->Literal.Matrix, 64 * sizeof(ASTNode*));
 		if (result) {
 			return result;
 		}
 
 		if (ParserMatch(TokenRightSquareBracket)) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING("empty matrix literals not allowed"));
+			DIAG_EMIT(
+				DiagExpectedToken, ParserPeek()->Loc.Line, ParserPeek()->Loc.LinePos, DIAG_ARG_STRING("empty matrix literals not allowed"));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
@@ -279,7 +288,7 @@ static Result ParsePrimary(ASTNode** node)
 
 			if (!ParserMatch(TokenRightSquareBracket)) {
 				// TODO: Source location
-				DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR(']'));
+				DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc.Line, ParserPeek()->Loc.LinePos, DIAG_ARG_CHAR(']'));
 				ParserSynchronize();
 				*node = nullptr;
 				return ResOk;
@@ -298,7 +307,7 @@ static Result ParsePrimary(ASTNode** node)
 		usz j = 0;
 		do {
 			while (ParserPeek()->Type != TokenRightSquareBracket) {
-				result = ParseExpression(&matrixLit->Data.Literal.Matrix[(i * maxWidth) + j]);
+				result = ParseExpression(&matrixLit->Literal.Matrix[(i * maxWidth) + j]);
 				if (result) {
 					return result;
 				}
@@ -313,29 +322,29 @@ static Result ParsePrimary(ASTNode** node)
 				}
 
 				zero->Type = ASTNodeLiteral;
-				result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&zero->Data.Literal.Matrix, sizeof(ASTNode*));
+				result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&zero->Literal.Matrix, sizeof(ASTNode*));
 				if (result) {
 					return result;
 				}
 
-				result = StatArenaAlloc(&g_parser.ASTArena, (void**)&zero->Data.Literal.Matrix[0]);
+				result = StatArenaAlloc(&g_parser.ASTArena, (void**)&zero->Literal.Matrix[0]);
 				if (result) {
 					return result;
 				}
 
-				zero->Data.Literal.Matrix[0]->Type = ASTNodeNumber;
-				zero->Data.Literal.Matrix[0]->Data.Number = 0;
-				zero->Data.Literal.Width = 1;
-				zero->Data.Literal.Height = 1;
+				zero->Literal.Matrix[0]->Type = ASTNodeNumber;
+				zero->Literal.Matrix[0]->Number = 0;
+				zero->Literal.Shape.Width = 1;
+				zero->Literal.Shape.Height = 1;
 
-				matrixLit->Data.Literal.Matrix[(i * maxWidth) + j] = zero;
+				matrixLit->Literal.Matrix[(i * maxWidth) + j] = zero;
 
 				++j;
 			}
 
 			if (!ParserMatch(TokenRightSquareBracket)) {
 				// TODO: Source location
-				DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR(']'));
+				DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc.Line, ParserPeek()->Loc.LinePos, DIAG_ARG_CHAR(']'));
 				ParserSynchronize();
 				*node = nullptr;
 				return ResOk;
@@ -345,8 +354,8 @@ static Result ParsePrimary(ASTNode** node)
 			j = 0;
 		} while (ParserMatch(TokenLeftSquareBracket));
 
-		matrixLit->Data.Literal.Height = height;
-		matrixLit->Data.Literal.Width = maxWidth;
+		matrixLit->Literal.Shape.Height = height;
+		matrixLit->Literal.Shape.Width = maxWidth;
 
 		*node = matrixLit;
 		return ResOk;
@@ -362,15 +371,17 @@ static Result ParsePrimary(ASTNode** node)
 		}
 
 		vectorLit->Type = ASTNodeLiteral;
-		vectorLit->Data.Literal.Width = 1;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&vectorLit->Data.Literal.Matrix, 8 * sizeof(ASTNode*));
+		vectorLit->Loc = loc;
+		vectorLit->Literal.Shape.Width = 1;
+		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&vectorLit->Literal.Matrix, 8 * sizeof(ASTNode*));
 		if (result) {
 			return result;
 		}
 
 		if (ParserMatch(TokenRightVectorBracket)) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING("empty vector literals not allowed"));
+			DIAG_EMIT(
+				DiagExpectedToken, ParserPeek()->Loc.Line, ParserPeek()->Loc.LinePos, DIAG_ARG_STRING("empty vector literals not allowed"));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
@@ -378,7 +389,7 @@ static Result ParsePrimary(ASTNode** node)
 
 		usz i = 0;
 		while (ParserPeek()->Type != TokenRightVectorBracket) {
-			result = ParseExpression(&vectorLit->Data.Literal.Matrix[i]);
+			result = ParseExpression(&vectorLit->Literal.Matrix[i]);
 			if (result) {
 				return result;
 			}
@@ -387,22 +398,19 @@ static Result ParsePrimary(ASTNode** node)
 
 		if (!ParserMatch(TokenRightVectorBracket)) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING(">>"));
+			DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc.Line, ParserPeek()->Loc.LinePos, DIAG_ARG_STRING(">>"));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
 		}
 
-		vectorLit->Data.Literal.Height = i;
+		vectorLit->Literal.Shape.Height = i;
 
 		*node = vectorLit;
 		return ResOk;
 	}
 
-	// printf("Unexpected token %s in primary\n", parser->Tokens[parser->CurrentToken].Lexeme);
-	// exit(1);
-	// TODO: Source location
-	DIAG_EMIT(DiagUnexpectedToken, token->SourceLine, token->SourceLinePos, DIAG_ARG_STRING("a"));
+	DIAG_EMIT(DiagUnexpectedToken, loc.Line, loc.LinePos, DIAG_ARG_STRING("a"));
 	ParserSynchronize();
 	*node = nullptr;
 	return ResOk;
@@ -427,8 +435,9 @@ static Result ParsePostfix(ASTNode** node)
 		}
 
 		postfix->Type = ASTNodeUnary;
-		postfix->Data.Unary.Operator = operator;
-		postfix->Data.Unary.Operand = primary;
+		postfix->Loc = primary->Loc;
+		postfix->Unary.Operator = operator;
+		postfix->Unary.Operand = primary;
 		*node = postfix;
 		return ResOk;
 	}
@@ -441,6 +450,7 @@ static Result ParseUnary(ASTNode** node)
 {
 	if (ParserPeek()->Type == TokenSubtract) {
 		TokenType operator = ParserPeek()->Type;
+		SourceLoc loc = ParserPeek()->Loc;
 		ParserAdvance();
 
 		ASTNode* operand;
@@ -456,8 +466,9 @@ static Result ParseUnary(ASTNode** node)
 		}
 
 		unary->Type = ASTNodeUnary;
-		unary->Data.Unary.Operator = operator;
-		unary->Data.Unary.Operand = operand;
+		unary->Loc = loc;
+		unary->Unary.Operator = operator;
+		unary->Unary.Operand = operand;
 		*node = unary;
 		return ResOk;
 	}
@@ -491,9 +502,10 @@ static Result ParseExponent(ASTNode** node)
 		}
 
 		left->Type = ASTNodeBinary;
-		left->Data.Binary.Left = temp;
-		left->Data.Binary.Operator = operator;
-		left->Data.Binary.Right = right;
+		left->Loc = temp->Loc;
+		left->Binary.Left = temp;
+		left->Binary.Operator = operator;
+		left->Binary.Right = right;
 	}
 
 	*node = left;
@@ -526,9 +538,10 @@ static Result ParseFactor(ASTNode** node)
 		}
 
 		left->Type = ASTNodeBinary;
-		left->Data.Binary.Left = temp;
-		left->Data.Binary.Operator = operator;
-		left->Data.Binary.Right = right;
+		left->Loc = temp->Loc;
+		left->Binary.Left = temp;
+		left->Binary.Operator = operator;
+		left->Binary.Right = right;
 	}
 
 	*node = left;
@@ -561,9 +574,10 @@ static Result ParseTerm(ASTNode** node)
 		}
 
 		left->Type = ASTNodeBinary;
-		left->Data.Binary.Left = temp;
-		left->Data.Binary.Operator = operator;
-		left->Data.Binary.Right = right;
+		left->Loc = temp->Loc;
+		left->Binary.Left = temp;
+		left->Binary.Operator = operator;
+		left->Binary.Right = right;
 	}
 
 	*node = left;
@@ -597,9 +611,10 @@ static Result ParseComparison(ASTNode** node)
 		}
 
 		left->Type = ASTNodeBinary;
-		left->Data.Binary.Left = temp;
-		left->Data.Binary.Operator = operator;
-		left->Data.Binary.Right = right;
+		left->Loc = temp->Loc;
+		left->Binary.Left = temp;
+		left->Binary.Operator = operator;
+		left->Binary.Right = right;
 	}
 
 	*node = left;
@@ -632,9 +647,10 @@ static Result ParseEquality(ASTNode** node)
 		}
 
 		left->Type = ASTNodeBinary;
-		left->Data.Binary.Left = temp;
-		left->Data.Binary.Operator = operator;
-		left->Data.Binary.Right = right;
+		left->Loc = temp->Loc;
+		left->Binary.Left = temp;
+		left->Binary.Operator = operator;
+		left->Binary.Right = right;
 	}
 
 	*node = left;
@@ -667,9 +683,10 @@ static Result ParseLogicAnd(ASTNode** node)
 		}
 
 		left->Type = ASTNodeBinary;
-		left->Data.Binary.Left = temp;
-		left->Data.Binary.Operator = operator;
-		left->Data.Binary.Right = right;
+		left->Loc = temp->Loc;
+		left->Binary.Left = temp;
+		left->Binary.Operator = operator;
+		left->Binary.Right = right;
 	}
 
 	*node = left;
@@ -702,9 +719,10 @@ static Result ParseExpression(ASTNode** node)
 		}
 
 		left->Type = ASTNodeBinary;
-		left->Data.Binary.Left = temp;
-		left->Data.Binary.Operator = operator;
-		left->Data.Binary.Right = right;
+		left->Loc = temp->Loc;
+		left->Binary.Left = temp;
+		left->Binary.Operator = operator;
+		left->Binary.Right = right;
 	}
 
 	*node = left;
@@ -714,6 +732,7 @@ static Result ParseExpression(ASTNode** node)
 static Result ParseExprOrAssignment(ASTNode** node)
 {
 	Token* token = ParserPeek();
+	SourceLoc loc = token->Loc;
 	if (token->Type == TokenIdentifier) {
 		SymbolView identifier = token->Lexeme;
 
@@ -740,7 +759,7 @@ static Result ParseExprOrAssignment(ASTNode** node)
 
 			if (!ParserMatch(TokenRightSquareBracket)) {
 				// TODO: Source location
-				DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR(']'));
+				DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc.Line, ParserPeek()->Loc.LinePos, DIAG_ARG_CHAR(']'));
 				ParserSynchronize();
 				*node = nullptr;
 				return ResOk;
@@ -752,8 +771,8 @@ static Result ParseExprOrAssignment(ASTNode** node)
 			}
 
 			indexSuffix->Type = ASTNodeIndexSuffix;
-			indexSuffix->Data.IndexSuffix.I = i;
-			indexSuffix->Data.IndexSuffix.J = j;
+			indexSuffix->IndexSuffix.I = i;
+			indexSuffix->IndexSuffix.J = j;
 		}
 
 		// This is an assignment
@@ -765,9 +784,10 @@ static Result ParseExprOrAssignment(ASTNode** node)
 			}
 
 			assignment->Type = ASTNodeAssignment;
-			assignment->Data.Assignment.Identifier = identifier;
-			assignment->Data.Assignment.Index = indexSuffix;
-			result = ParseExpression(&assignment->Data.Assignment.Expression);
+			assignment->Loc = loc;
+			assignment->Assignment.Identifier = identifier;
+			assignment->Assignment.Index = indexSuffix;
+			result = ParseExpression(&assignment->Assignment.Expression);
 			if (result) {
 				return result;
 			}
@@ -785,6 +805,7 @@ static Result ParseExprOrAssignment(ASTNode** node)
 
 static Result ParseIfStmt(ASTNode** node)
 {
+	SourceLoc loc = ParserPeek()->Loc;
 	ParserAdvance();
 
 	ASTNode* condition;
@@ -822,9 +843,10 @@ static Result ParseIfStmt(ASTNode** node)
 	}
 
 	ifStmt->Type = ASTNodeIfStmt;
-	ifStmt->Data.IfStmt.Condition = condition;
-	ifStmt->Data.IfStmt.ThenBlock = body;
-	ifStmt->Data.IfStmt.ElseBlock = elseBody;
+	ifStmt->Loc = loc;
+	ifStmt->IfStmt.Condition = condition;
+	ifStmt->IfStmt.ThenBlock = body;
+	ifStmt->IfStmt.ElseBlock = elseBody;
 
 	*node = ifStmt;
 	return ResOk;
@@ -832,6 +854,7 @@ static Result ParseIfStmt(ASTNode** node)
 
 static Result ParseWhileStmt(ASTNode** node)
 {
+	SourceLoc loc = ParserPeek()->Loc;
 	ParserAdvance();
 
 	ASTNode* condition;
@@ -853,8 +876,9 @@ static Result ParseWhileStmt(ASTNode** node)
 	}
 
 	whileStmt->Type = ASTNodeWhileStmt;
-	whileStmt->Data.WhileStmt.Body = body;
-	whileStmt->Data.WhileStmt.Condition = condition;
+	whileStmt->Loc = loc;
+	whileStmt->WhileStmt.Body = body;
+	whileStmt->WhileStmt.Condition = condition;
 	*node = whileStmt;
 	return ResOk;
 }
@@ -862,12 +886,13 @@ static Result ParseWhileStmt(ASTNode** node)
 static Result ParseVarDecl(ASTNode** node)
 {
 	Token* token = ParserConsume();
+	SourceLoc loc = token->Loc;
 	bool isConst = token->Type == TokenConst;
 
 	token = ParserPeek();
 	if (token->Type != TokenIdentifier) {
 		// TODO: Source location
-		DIAG_EMIT(DiagExpectedToken, token->SourceLine, token->SourceLinePos, DIAG_ARG_STRING("identifier"));
+		DIAG_EMIT(DiagExpectedToken, token->Loc.Line, token->Loc.LinePos, DIAG_ARG_STRING("identifier"));
 		ParserSynchronize();
 		*node = nullptr;
 		return ResOk;
@@ -880,50 +905,51 @@ static Result ParseVarDecl(ASTNode** node)
 	}
 
 	varDecl->Type = ASTNodeVarDecl;
-	varDecl->Data.VarDecl.IsConst = isConst;
-	varDecl->Data.VarDecl.HasType = false;
-	varDecl->Data.VarDecl.Identifier = ParserPeek()->Lexeme;
+	varDecl->Loc = loc;
+	varDecl->VarDecl.IsConst = isConst;
+	varDecl->VarDecl.HasType = false;
+	varDecl->VarDecl.Identifier = ParserPeek()->Lexeme;
 	ParserAdvance();
 
 	if (ParserMatch(TokenColon)) {
 		token = ParserConsume();
 		if (token->Type != TokenMatrixShape) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, token->SourceLine, token->SourceLinePos, DIAG_ARG_STRING("matrix shape declaration"));
+			DIAG_EMIT(DiagExpectedToken, token->Loc.Line, token->Loc.LinePos, DIAG_ARG_STRING("matrix shape declaration"));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
 		}
 
-		varDecl->Data.VarDecl.Type = token->MatrixShape;
-		varDecl->Data.VarDecl.HasType = true;
+		varDecl->VarDecl.Type = token->MatrixShape;
+		varDecl->VarDecl.HasType = true;
 	}
 
 	if (!ParserMatch(TokenEqual)) {
-		if (!varDecl->Data.VarDecl.HasType) {
+		if (!varDecl->VarDecl.HasType) {
 			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR(':'));
+			DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc.Line, ParserPeek()->Loc.LinePos, DIAG_ARG_CHAR(':'));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
 		}
 
-		varDecl->Data.VarDecl.Expression = nullptr;
+		varDecl->VarDecl.Expression = nullptr;
 		*node = varDecl;
 		return ResOk;
 	}
 
-	result = ParseExpression(&varDecl->Data.VarDecl.Expression);
+	result = ParseExpression(&varDecl->VarDecl.Expression);
 	if (result) {
 		return result;
 	}
 
-	if (varDecl->Data.VarDecl.Expression) {
-		if (!varDecl->Data.VarDecl.HasType) {
-			varDecl->Data.VarDecl.Type.Height = varDecl->Data.VarDecl.Expression->Data.Literal.Height;
-			varDecl->Data.VarDecl.Type.Width = varDecl->Data.VarDecl.Expression->Data.Literal.Width;
-		} else if (varDecl->Data.VarDecl.Type.Height != varDecl->Data.VarDecl.Expression->Data.Literal.Height
-			|| varDecl->Data.VarDecl.Type.Width != varDecl->Data.VarDecl.Expression->Data.Literal.Width) {
+	if (varDecl->VarDecl.Expression) {
+		if (!varDecl->VarDecl.HasType) {
+			varDecl->VarDecl.Type.Height = varDecl->VarDecl.Expression->Literal.Shape.Height;
+			varDecl->VarDecl.Type.Width = varDecl->VarDecl.Expression->Literal.Shape.Width;
+		} else if (varDecl->VarDecl.Type.Height != varDecl->VarDecl.Expression->Literal.Shape.Height
+			|| varDecl->VarDecl.Type.Width != varDecl->VarDecl.Expression->Literal.Shape.Width) {
 			// TODO: Source location
 			DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING("type mismatch"));
 			ParserSynchronize();
@@ -938,8 +964,9 @@ static Result ParseVarDecl(ASTNode** node)
 
 static Result ParseBlock(ASTNode** node)
 {
+	SourceLoc loc = ParserPeek()->Loc;
 	if (!ParserMatch(TokenLeftCurlyBracket)) {
-		DIAG_EMIT(DiagExpectedToken, ParserPeek()->SourceLine, ParserPeek()->SourceLinePos, DIAG_ARG_CHAR('{'));
+		DIAG_EMIT(DiagExpectedToken, loc.Line, loc.LinePos, DIAG_ARG_CHAR('{'));
 		ParserSynchronize();
 		*node = nullptr;
 		return ResOk;
@@ -952,7 +979,8 @@ static Result ParseBlock(ASTNode** node)
 	}
 
 	block->Type = ASTNodeBlock;
-	result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&block->Data.Block.Nodes, 64 * sizeof(ASTNode*));
+	block->Loc = loc;
+	result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&block->Block.Nodes, 64 * sizeof(ASTNode*));
 	if (result) {
 		return result;
 	}
@@ -961,7 +989,7 @@ static Result ParseBlock(ASTNode** node)
 	while (!ParserMatch(TokenRightCurlyBracket)) {
 		Token* token = ParserPeek();
 		if (token->Type == TokenEof) {
-			DIAG_EMIT(DiagExpectedToken, token->SourceLine, token->SourceLinePos, DIAG_ARG_CHAR('}'));
+			DIAG_EMIT(DiagExpectedToken, token->Loc.Line, token->Loc.LinePos, DIAG_ARG_CHAR('}'));
 			ParserSynchronize();
 			*node = nullptr;
 			return ResOk;
@@ -973,12 +1001,12 @@ static Result ParseBlock(ASTNode** node)
 			return result;
 		}
 
-		block->Data.Block.Nodes[i] = statement;
+		block->Block.Nodes[i] = statement;
 
 		++i;
 	}
 
-	block->Data.Block.NodeCount = i;
+	block->Block.NodeCount = i;
 
 	*node = block;
 	return ResOk;
@@ -1011,7 +1039,7 @@ Result ParserParse()
 	}
 
 	topLevelBlock->Type = ASTNodeBlock;
-	result = DynArenaAllocZeroed(&g_parser.ArraysArena, (void**)&topLevelBlock->Data.Block.Nodes, 64 * sizeof(ASTNode*));
+	result = DynArenaAllocZeroed(&g_parser.ArraysArena, (void**)&topLevelBlock->Block.Nodes, 64 * sizeof(ASTNode*));
 	if (result) {
 		return result;
 	}
@@ -1033,12 +1061,12 @@ Result ParserParse()
 			continue;
 		}
 
-		topLevelBlock->Data.Block.Nodes[i] = node;
+		topLevelBlock->Block.Nodes[i] = node;
 
 		++i;
 	}
 
-	topLevelBlock->Data.Block.NodeCount = i;
+	topLevelBlock->Block.NodeCount = i;
 
 	return ResOk;
 }
@@ -1056,16 +1084,16 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 
 	switch (node->Type) {
 	case ASTNodeNumber:
-		printf("%lf", node->Data.Number);
+		printf("%lf", node->Number);
 		break;
 	case ASTNodeLiteral:
-		printf("(lit %lux%lu ", node->Data.Literal.Height, node->Data.Literal.Width);
-		for (size_t i = 0; i < node->Data.Literal.Height; ++i) {
+		printf("(lit %llux%llu ", node->Literal.Shape.Height, node->Literal.Shape.Width);
+		for (size_t i = 0; i < node->Literal.Shape.Height; ++i) {
 			printf("(row ");
-			for (size_t j = 0; j < node->Data.Literal.Width; ++j) {
-				ParserPrintAST(node->Data.Literal.Matrix[(i * node->Data.Literal.Width) + j], 0);
+			for (size_t j = 0; j < node->Literal.Shape.Width; ++j) {
+				ParserPrintAST(node->Literal.Matrix[(i * node->Literal.Shape.Width) + j], 0);
 
-				if (j < node->Data.Literal.Width - 1) {
+				if (j < node->Literal.Shape.Width - 1) {
 					printf(" ");
 				}
 			}
@@ -1075,8 +1103,8 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 		break;
 	case ASTNodeBlock:
 		printf("(block\n");
-		for (size_t i = 0; i < node->Data.Block.NodeCount; ++i) {
-			ParserPrintAST(node->Data.Block.Nodes[i], indents + 2);
+		for (size_t i = 0; i < node->Block.NodeCount; ++i) {
+			ParserPrintAST(node->Block.Nodes[i], indents + 2);
 			printf("\n");
 		}
 		for (usz i = 0; i < indents; ++i) {
@@ -1085,41 +1113,41 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 		printf(")");
 		break;
 	case ASTNodeUnary:
-		printf("(un %u ", node->Data.Unary.Operator);
-		ParserPrintAST(node->Data.Unary.Operand, 0);
+		printf("(un %u ", node->Unary.Operator);
+		ParserPrintAST(node->Unary.Operand, 0);
 		printf(")");
 		break;
 	case ASTNodeGrouping:
 		printf("(grouping ");
-		ParserPrintAST(node->Data.Grouping.Expression, 0);
+		ParserPrintAST(node->Grouping.Expression, 0);
 		printf(")");
 		break;
 	case ASTNodeBinary:
-		printf("(bin %u ", node->Data.Binary.Operator);
-		ParserPrintAST(node->Data.Binary.Left, 0);
+		printf("(bin %u ", node->Binary.Operator);
+		ParserPrintAST(node->Binary.Left, 0);
 		printf(" ");
-		ParserPrintAST(node->Data.Binary.Right, 0);
+		ParserPrintAST(node->Binary.Right, 0);
 		printf(")");
 		break;
 	case ASTNodeVarDecl:
-		if (node->Data.VarDecl.IsConst) {
+		if (node->VarDecl.IsConst) {
 			printf("(const ");
 		} else {
 			printf("(let ");
 		}
-		printf("%.*s", (i32)node->Data.VarDecl.Identifier.SymbolLength, node->Data.VarDecl.Identifier.Symbol);
-		if (node->Data.VarDecl.HasType) {
-			printf(": %llux%llu", node->Data.VarDecl.Type.Height, node->Data.VarDecl.Type.Width);
+		printf("%.*s", (i32)node->VarDecl.Identifier.SymbolLength, node->VarDecl.Identifier.Symbol);
+		if (node->VarDecl.HasType) {
+			printf(": %llux%llu", node->VarDecl.Type.Height, node->VarDecl.Type.Width);
 		}
 		printf(" = ");
-		ParserPrintAST(node->Data.VarDecl.Expression, 0);
+		ParserPrintAST(node->VarDecl.Expression, 0);
 		printf(")");
 		break;
 	case ASTNodeWhileStmt:
 		printf("(while ");
-		ParserPrintAST(node->Data.WhileStmt.Condition, 0);
+		ParserPrintAST(node->WhileStmt.Condition, 0);
 		printf("\n");
-		ParserPrintAST(node->Data.WhileStmt.Body, indents + 2);
+		ParserPrintAST(node->WhileStmt.Body, indents + 2);
 		printf("\n");
 		for (usz i = 0; i < indents; ++i) {
 			putchar(' ');
@@ -1128,12 +1156,12 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 		break;
 	case ASTNodeIfStmt:
 		printf("(if ");
-		ParserPrintAST(node->Data.IfStmt.Condition, 0);
+		ParserPrintAST(node->IfStmt.Condition, 0);
 		printf(" then\n");
-		ParserPrintAST(node->Data.IfStmt.ThenBlock, indents + 2);
-		if (node->Data.IfStmt.ElseBlock) {
+		ParserPrintAST(node->IfStmt.ThenBlock, indents + 2);
+		if (node->IfStmt.ElseBlock) {
 			printf(" else\n");
-			ParserPrintAST(node->Data.IfStmt.ElseBlock, indents + 2);
+			ParserPrintAST(node->IfStmt.ElseBlock, indents + 2);
 		}
 		printf("\n");
 		for (usz i = 0; i < indents; ++i) {
@@ -1143,34 +1171,34 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 		break;
 	case ASTNodeIndexSuffix:
 		printf("(index ");
-		ParserPrintAST(node->Data.IndexSuffix.I, 0);
-		if (node->Data.IndexSuffix.J) {
+		ParserPrintAST(node->IndexSuffix.I, 0);
+		if (node->IndexSuffix.J) {
 			printf(" ");
-			ParserPrintAST(node->Data.IndexSuffix.J, 0);
+			ParserPrintAST(node->IndexSuffix.J, 0);
 		}
 		printf(")");
 		break;
 	case ASTNodeAssignment:
-		printf("(assignment %.*s", (i32)node->Data.Assignment.Identifier.SymbolLength, node->Data.Assignment.Identifier.Symbol);
-		if (node->Data.Assignment.Index) {
-			ParserPrintAST(node->Data.Assignment.Index, 0);
+		printf("(assignment %.*s", (i32)node->Assignment.Identifier.SymbolLength, node->Assignment.Identifier.Symbol);
+		if (node->Assignment.Index) {
+			ParserPrintAST(node->Assignment.Index, 0);
 		}
 		printf(" ");
-		ParserPrintAST(node->Data.Assignment.Expression, 0);
+		ParserPrintAST(node->Assignment.Expression, 0);
 		printf(")");
 		break;
 	case ASTNodeIdentifier:
-		printf("(ident %.*s", (i32)node->Data.Identifier.Identifier.SymbolLength, node->Data.Identifier.Identifier.Symbol);
-		if (node->Data.Identifier.Index) {
-			ParserPrintAST(node->Data.Identifier.Index, 0);
+		printf("(ident %.*s", (i32)node->Identifier.Identifier.SymbolLength, node->Identifier.Identifier.Symbol);
+		if (node->Identifier.Index) {
+			ParserPrintAST(node->Identifier.Index, 0);
 		}
 		printf(")");
 		break;
 	case ASTNodeFunctionCall:
-		printf("(call %.*s", (i32)node->Data.FunctionCall.Identifier.SymbolLength, node->Data.FunctionCall.Identifier.Symbol);
-		for (size_t i = 0; i < node->Data.FunctionCall.ArgCount; ++i) {
+		printf("(call %.*s", (i32)node->FunctionCall.Identifier.SymbolLength, node->FunctionCall.Identifier.Symbol);
+		for (size_t i = 0; i < node->FunctionCall.ArgCount; ++i) {
 			printf(" (arg ");
-			ParserPrintAST(node->Data.FunctionCall.CallArgs[i], 0);
+			ParserPrintAST(node->FunctionCall.CallArgs[i], 0);
 			printf(")");
 		}
 		printf(")");

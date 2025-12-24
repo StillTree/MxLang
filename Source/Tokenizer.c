@@ -111,13 +111,13 @@ static bool TokenizerMatch(char expected)
 static void TokenizerAddToken(TokenType type, const SymbolView* lexeme, f64 number, const MatrixShape* matrixShape)
 {
 	if (type == TokenEof) {
-		g_tokenizer.LastReturnedToken.SourceLinePos = (usz)(g_tokenizer.SourceEnd - g_source.Lines[g_tokenizer.SourceLine - 1] + 1);
+		g_tokenizer.LastReturnedToken.Loc.LinePos = (usz)(g_tokenizer.SourceEnd - g_source.Lines[g_tokenizer.SourceLine - 1] + 1);
 	} else {
-		g_tokenizer.LastReturnedToken.SourceLinePos
+		g_tokenizer.LastReturnedToken.Loc.LinePos
 			= g_tokenizer.SourceLinePos - (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
 	}
 
-	g_tokenizer.LastReturnedToken.SourceLine = g_tokenizer.SourceLine;
+	g_tokenizer.LastReturnedToken.Loc.Line = g_tokenizer.SourceLine;
 	g_tokenizer.LastReturnedToken.Type = type;
 
 	if (type == TokenNumber) {
@@ -145,7 +145,7 @@ inline static void TokenizerSkipAlphanumeric()
 
 Result TokenizerInit()
 {
-	Result result = SymbolTableInit(&g_tokenizer.TableStrings);
+	Result result = SymbolTableInit(&g_tokenizer.TableIdentifiers);
 	if (result) {
 		return result;
 	}
@@ -388,7 +388,7 @@ Result TokenizerNextToken(Token** token)
 				TokenizerAddToken(TokenOr, nullptr, 0, nullptr);
 			} else {
 				SymbolView lexeme;
-				Result result = SymbolTableAdd(&g_tokenizer.TableStrings, g_tokenizer.LexemeStart, lexemeLength, &lexeme);
+				Result result = SymbolTableAdd(&g_tokenizer.TableIdentifiers, g_tokenizer.LexemeStart, lexemeLength, &lexeme);
 				if (result) {
 					return result;
 				}
@@ -403,4 +403,4 @@ Result TokenizerNextToken(Token** token)
 	}
 }
 
-Result TokenizerDeinit() { return SymbolTableDeinit(&g_tokenizer.TableStrings); }
+Result TokenizerDeinit() { return SymbolTableDeinit(&g_tokenizer.TableIdentifiers); }

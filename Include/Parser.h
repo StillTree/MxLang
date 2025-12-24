@@ -1,10 +1,11 @@
 #pragma once
 
-#include "Memory/StatArena.h"
+#include "Matrix.h"
 #include "Memory/DynArena.h"
+#include "Memory/StatArena.h"
 #include "Memory/SymbolTable.h"
-#include "Types.h"
 #include "Tokenizer.h"
+#include "Types.h"
 
 typedef enum ASTNodeType {
 	ASTNodeLiteral,
@@ -24,14 +25,14 @@ typedef enum ASTNodeType {
 
 typedef struct ASTNode {
 	ASTNodeType Type;
+	SourceLoc Loc;
 
 	union {
 		double Number;
 
 		struct {
 			struct ASTNode** Matrix;
-			usz Height;
-			usz Width;
+			MatrixShape Shape;
 		} Literal;
 
 		struct {
@@ -60,6 +61,7 @@ typedef struct ASTNode {
 			struct ASTNode* Expression;
 			bool IsConst;
 			bool HasType;
+			usz ID;
 		} VarDecl;
 
 		struct {
@@ -82,11 +84,13 @@ typedef struct ASTNode {
 			SymbolView Identifier;
 			struct ASTNode* Index;
 			struct ASTNode* Expression;
+			usz ID;
 		} Assignment;
 
 		struct {
 			SymbolView Identifier;
 			struct ASTNode* Index;
+			usz ID;
 		} Identifier;
 
 		struct {
@@ -94,7 +98,7 @@ typedef struct ASTNode {
 			struct ASTNode** CallArgs;
 			usz ArgCount;
 		} FunctionCall;
-	} Data;
+	};
 } ASTNode;
 
 typedef struct Parser {

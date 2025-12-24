@@ -3,6 +3,7 @@
 #include "Tokenizer.h"
 #include "Parser.h"
 #include <stdio.h>
+#include "TypeChecker.h"
 
 int main(int argc, char* argv[])
 {
@@ -31,6 +32,10 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
+	if (TypeCheckerInit()) {
+		return 1;
+	}
+
 	if (ParserParse()) {
 		return 1;
 	}
@@ -42,6 +47,21 @@ int main(int argc, char* argv[])
 	printf("Parsed!\n\n");
 
 	ParserPrintAST((ASTNode*)g_parser.ASTArena.Blocks->Data, 0);
+	printf("\n\n");
+
+	if (TypeCheckerSymbolBind()) {
+		return 1;
+	}
+
+	errCount = DiagReport();
+	if (errCount == 0) {
+	}
+
+	printf("Bound symbols!\n\n");
+
+	if (TypeCheckerDeinit()) {
+		return 1;
+	}
 
 	if (ParserDeinit()) {
 		return 1;

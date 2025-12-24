@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Memory/SymbolTable.h"
+#include "Matrix.h"
 #include "Types.h"
 
 typedef enum TokenType : u16 {
@@ -41,10 +42,10 @@ typedef enum TokenType : u16 {
 	TokenError
 } TokenType;
 
-typedef struct MatrixShape {
-	u64 Height;
-	u64 Width;
-} MatrixShape;
+typedef struct SourceLoc {
+	usz Line;
+	usz LinePos;
+} SourceLoc;
 
 typedef struct Token {
 	TokenType Type;
@@ -53,8 +54,7 @@ typedef struct Token {
 		double Number;
 		MatrixShape MatrixShape;
 	};
-	usz SourceLine;
-	usz SourceLinePos;
+	SourceLoc Loc;
 } Token;
 
 typedef struct Tokenizer {
@@ -63,7 +63,7 @@ typedef struct Tokenizer {
 	const char* LexemeCurrent;
 	usz SourceLine;
 	usz SourceLinePos;
-	SymbolTable TableStrings;
+	SymbolTable TableIdentifiers;
 	Token LastReturnedToken;
 	bool HasLookahead;
 } Tokenizer;
