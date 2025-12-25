@@ -18,7 +18,8 @@ typedef struct DiagInfo {
 
 static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelError, "Expected token '%0'" },
 	[DiagUnexpectedToken] = { DiagLevelError, "Unexpected token '%0'" },
-	[DiagExpectedTokenAfter] = { DiagLevelError, "Expected '%0' after '%1'" } };
+	[DiagExpectedTokenAfter] = { DiagLevelError, "Expected '%0' after '%1'" },
+	[DiagUnusedExpressionResult] = { DiagLevelWarning, "Unused expression result" } };
 
 static usz NumberWidth(usz num)
 {

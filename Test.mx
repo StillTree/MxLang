@@ -1,11 +1,7 @@
-let let let
+let a: 2x2dlfjks; = 10
 
-let a = 10
+const b = 10
 
-{
-	let a = 123
+b = 1
 
-	b = 10
-}
-
-display(b)
+b

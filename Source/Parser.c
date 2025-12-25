@@ -944,18 +944,9 @@ static Result ParseVarDecl(ASTNode** node)
 		return result;
 	}
 
-	if (varDecl->VarDecl.Expression) {
-		if (!varDecl->VarDecl.HasType) {
-			varDecl->VarDecl.Type.Height = varDecl->VarDecl.Expression->Literal.Shape.Height;
-			varDecl->VarDecl.Type.Width = varDecl->VarDecl.Expression->Literal.Shape.Width;
-		} else if (varDecl->VarDecl.Type.Height != varDecl->VarDecl.Expression->Literal.Shape.Height
-			|| varDecl->VarDecl.Type.Width != varDecl->VarDecl.Expression->Literal.Shape.Width) {
-			// TODO: Source location
-			DIAG_EMIT(DiagExpectedToken, 1, 1, DIAG_ARG_STRING("type mismatch"));
-			ParserSynchronize();
-			*node = nullptr;
-			return ResOk;
-		}
+	if (!varDecl->VarDecl.HasType && varDecl->VarDecl.Expression) {
+		varDecl->VarDecl.Type.Height = varDecl->VarDecl.Expression->Literal.Shape.Height;
+		varDecl->VarDecl.Type.Width = varDecl->VarDecl.Expression->Literal.Shape.Width;
 	}
 
 	*node = varDecl;

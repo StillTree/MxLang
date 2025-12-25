@@ -1,9 +1,9 @@
 #include "Diagnostics.h"
+#include "Parser.h"
 #include "SourceManager.h"
 #include "Tokenizer.h"
-#include "Parser.h"
-#include <stdio.h>
 #include "TypeChecker.h"
+#include <stdio.h>
 
 int main(int argc, char* argv[])
 {
@@ -41,8 +41,7 @@ int main(int argc, char* argv[])
 	}
 
 	usz errCount = DiagReport();
-	if (errCount == 0) {
-	}
+	if (errCount == 0) { }
 
 	printf("Parsed!\n\n");
 
@@ -53,11 +52,19 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	errCount = DiagReport();
-	if (errCount == 0) {
-	}
+	errCount += DiagReport();
+	if (errCount == 0) { }
 
 	printf("Bound symbols!\n\n");
+
+	if (errCount == 0) {
+		TypeCheckerTypeCheck();
+
+		errCount += DiagReport();
+		if (errCount == 0) { }
+
+		printf("Type checked!\n\n");
+	}
 
 	if (TypeCheckerDeinit()) {
 		return 1;

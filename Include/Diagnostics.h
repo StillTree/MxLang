@@ -5,7 +5,7 @@
 
 static constexpr usz MAX_DIAG_ARGS = 2;
 
-typedef enum DiagType { DiagExpectedToken, DiagUnexpectedToken, DiagExpectedTokenAfter } DiagType;
+typedef enum DiagType { DiagExpectedToken, DiagUnexpectedToken, DiagExpectedTokenAfter, DiagUnusedExpressionResult } DiagType;
 
 typedef enum DiagArgType {
 	DiagArgChar,
