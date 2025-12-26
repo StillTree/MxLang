@@ -1,12 +1,12 @@
 #pragma once
 
-#include "Matrix.h"
+#include "MxShape.h"
 #include "Memory/DynArena.h"
 #include "Memory/StatArena.h"
 #include "Result.h"
 
 typedef struct TypeCheckingEntry {
-	MatrixShape Shape;
+	MxShape Shape;
 	bool IsConst;
 } TypeCheckingEntry;
 

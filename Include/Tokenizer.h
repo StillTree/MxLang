@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Memory/SymbolTable.h"
-#include "Matrix.h"
+#include "MxShape.h"
 #include "Types.h"
 
 typedef enum TokenType : u16 {
@@ -52,7 +52,7 @@ typedef struct Token {
 	union {
 		SymbolView Lexeme;
 		double Number;
-		MatrixShape MatrixShape;
+		MxShape MatrixShape;
 	};
 	SourceLoc Loc;
 } Token;

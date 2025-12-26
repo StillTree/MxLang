@@ -1,4 +1,5 @@
 #include "Diagnostics.h"
+#include "Interpreter.h"
 #include "Parser.h"
 #include "SourceManager.h"
 #include "Tokenizer.h"
@@ -67,6 +68,23 @@ int main(int argc, char* argv[])
 	}
 
 	if (TypeCheckerDeinit()) {
+		return 1;
+	}
+
+	if (InterpreterInit()) {
+		return 1;
+	}
+
+	if (errCount == 0) {
+		InterpreterInterpret();
+
+		errCount += DiagReport();
+		if (errCount == 0) { }
+
+		printf("Interpreted!\n\n");
+	}
+
+	if (InterpreterDeinit()) {
 		return 1;
 	}
 

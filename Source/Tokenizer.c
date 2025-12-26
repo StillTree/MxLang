@@ -5,10 +5,15 @@
 #include <math.h>
 #include <string.h>
 
-static MatrixShape ParseMatrixShape(const char* str, usz strLength)
+static MxShape ParseMatrixShape(const char* str, usz strLength)
 {
 	const char* strEnd = str + strLength;
-	MatrixShape shape = { 0 };
+	MxShape shape = { 0 };
+
+	if (strLength == 3 && memcmp(str, "dyn", 3) == 0) {
+		shape.Type = MxDyn;
+		return shape;
+	}
 
 	while (*str != 'x') {
 		shape.Height *= 10;
@@ -108,13 +113,12 @@ static bool TokenizerMatch(char expected)
 }
 
 // TODO: Make this function not trash
-static void TokenizerAddToken(TokenType type, const SymbolView* lexeme, f64 number, const MatrixShape* matrixShape)
+static void TokenizerAddToken(TokenType type, const SymbolView* lexeme, f64 number, const MxShape* matrixShape)
 {
 	if (type == TokenEof) {
 		g_tokenizer.LastReturnedToken.Loc.LinePos = (usz)(g_tokenizer.SourceEnd - g_source.Lines[g_tokenizer.SourceLine - 1] + 1);
 	} else {
-		g_tokenizer.LastReturnedToken.Loc.LinePos
-			= g_tokenizer.SourceLinePos - (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
+		g_tokenizer.LastReturnedToken.Loc.LinePos = g_tokenizer.SourceLinePos - (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
 	}
 
 	g_tokenizer.LastReturnedToken.Loc.Line = g_tokenizer.SourceLine;
@@ -338,7 +342,7 @@ Result TokenizerNextToken(Token** token)
 				}
 
 				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
-				MatrixShape shape = ParseMatrixShape(g_tokenizer.LexemeStart, lexemeLength);
+				MxShape shape = ParseMatrixShape(g_tokenizer.LexemeStart, lexemeLength);
 				TokenizerAddToken(TokenMatrixShape, nullptr, 0, &shape);
 			} else if (TokenizerMatch('.')) {
 				if (!isdigit(TokenizerPeek(0))) {
@@ -374,6 +378,9 @@ Result TokenizerNextToken(Token** token)
 
 			if (lexemeLength == 3 && memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
 				TokenizerAddToken(TokenLet, nullptr, 0, nullptr);
+			} else if (lexemeLength == 3 && memcmp(g_tokenizer.LexemeStart, "dyn", lexemeLength) == 0) {
+				MxShape shape = { .Type = MxDyn, .Height = 0, .Width = 0 };
+				TokenizerAddToken(TokenMatrixShape, nullptr, 0, &shape);
 			} else if (lexemeLength == 5 && memcmp(g_tokenizer.LexemeStart, "const", lexemeLength) == 0) {
 				TokenizerAddToken(TokenConst, nullptr, 0, nullptr);
 			} else if (lexemeLength == 2 && memcmp(g_tokenizer.LexemeStart, "if", lexemeLength) == 0) {

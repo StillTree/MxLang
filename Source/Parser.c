@@ -196,25 +196,26 @@ static Result ParsePrimary(ASTNode** node)
 			return result;
 		}
 
-		number->Type = ASTNodeLiteral;
+		number->Type = ASTNodeMxLiteral;
 		number->Loc = loc;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&number->Literal.Matrix, sizeof(ASTNode*));
+		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&number->MxLiteral.Matrix, sizeof(ASTNode*));
 		if (result) {
 			return result;
 		}
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&number->Literal.Matrix[0]);
+		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&number->MxLiteral.Matrix[0]);
 		if (result) {
 			return result;
 		}
 
 		ParserAdvance();
 
-		number->Literal.Matrix[0]->Type = ASTNodeNumber;
-		number->Literal.Matrix[0]->Loc = loc;
-		number->Literal.Matrix[0]->Number = token->Number;
-		number->Literal.Shape.Width = 1;
-		number->Literal.Shape.Height = 1;
+		number->MxLiteral.Matrix[0]->Type = ASTNodeNumber;
+		number->MxLiteral.Matrix[0]->Loc = loc;
+		number->MxLiteral.Matrix[0]->Number = token->Number;
+		number->MxLiteral.Shape.Height = 1;
+		number->MxLiteral.Shape.Width = 1;
+		number->MxLiteral.Shape.Type = MxStat;
 
 		*node = number;
 		return ResOk;
@@ -260,9 +261,9 @@ static Result ParsePrimary(ASTNode** node)
 			return result;
 		}
 
-		matrixLit->Type = ASTNodeLiteral;
+		matrixLit->Type = ASTNodeMxLiteral;
 		matrixLit->Loc = loc;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&matrixLit->Literal.Matrix, 64 * sizeof(ASTNode*));
+		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&matrixLit->MxLiteral.Matrix, 64 * sizeof(ASTNode*));
 		if (result) {
 			return result;
 		}
@@ -307,7 +308,7 @@ static Result ParsePrimary(ASTNode** node)
 		usz j = 0;
 		do {
 			while (ParserPeek()->Type != TokenRightSquareBracket) {
-				result = ParseExpression(&matrixLit->Literal.Matrix[(i * maxWidth) + j]);
+				result = ParseExpression(&matrixLit->MxLiteral.Matrix[(i * maxWidth) + j]);
 				if (result) {
 					return result;
 				}
@@ -321,23 +322,24 @@ static Result ParsePrimary(ASTNode** node)
 					return result;
 				}
 
-				zero->Type = ASTNodeLiteral;
-				result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&zero->Literal.Matrix, sizeof(ASTNode*));
+				zero->Type = ASTNodeMxLiteral;
+				result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&zero->MxLiteral.Matrix, sizeof(ASTNode*));
 				if (result) {
 					return result;
 				}
 
-				result = StatArenaAlloc(&g_parser.ASTArena, (void**)&zero->Literal.Matrix[0]);
+				result = StatArenaAlloc(&g_parser.ASTArena, (void**)&zero->MxLiteral.Matrix[0]);
 				if (result) {
 					return result;
 				}
 
-				zero->Literal.Matrix[0]->Type = ASTNodeNumber;
-				zero->Literal.Matrix[0]->Number = 0;
-				zero->Literal.Shape.Width = 1;
-				zero->Literal.Shape.Height = 1;
+				zero->MxLiteral.Matrix[0]->Type = ASTNodeNumber;
+				zero->MxLiteral.Matrix[0]->Number = 0;
+				zero->MxLiteral.Shape.Height = 1;
+				zero->MxLiteral.Shape.Width = 1;
+				zero->MxLiteral.Shape.Type = MxStat;
 
-				matrixLit->Literal.Matrix[(i * maxWidth) + j] = zero;
+				matrixLit->MxLiteral.Matrix[(i * maxWidth) + j] = zero;
 
 				++j;
 			}
@@ -354,8 +356,9 @@ static Result ParsePrimary(ASTNode** node)
 			j = 0;
 		} while (ParserMatch(TokenLeftSquareBracket));
 
-		matrixLit->Literal.Shape.Height = height;
-		matrixLit->Literal.Shape.Width = maxWidth;
+		matrixLit->MxLiteral.Shape.Height = height;
+		matrixLit->MxLiteral.Shape.Width = maxWidth;
+		matrixLit->MxLiteral.Shape.Type = MxStat;
 
 		*node = matrixLit;
 		return ResOk;
@@ -370,10 +373,11 @@ static Result ParsePrimary(ASTNode** node)
 			return result;
 		}
 
-		vectorLit->Type = ASTNodeLiteral;
+		vectorLit->Type = ASTNodeMxLiteral;
 		vectorLit->Loc = loc;
-		vectorLit->Literal.Shape.Width = 1;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&vectorLit->Literal.Matrix, 8 * sizeof(ASTNode*));
+		vectorLit->MxLiteral.Shape.Width = 1;
+		vectorLit->MxLiteral.Shape.Type = MxStat;
+		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&vectorLit->MxLiteral.Matrix, 8 * sizeof(ASTNode*));
 		if (result) {
 			return result;
 		}
@@ -389,7 +393,7 @@ static Result ParsePrimary(ASTNode** node)
 
 		usz i = 0;
 		while (ParserPeek()->Type != TokenRightVectorBracket) {
-			result = ParseExpression(&vectorLit->Literal.Matrix[i]);
+			result = ParseExpression(&vectorLit->MxLiteral.Matrix[i]);
 			if (result) {
 				return result;
 			}
@@ -404,7 +408,7 @@ static Result ParsePrimary(ASTNode** node)
 			return ResOk;
 		}
 
-		vectorLit->Literal.Shape.Height = i;
+		vectorLit->MxLiteral.Shape.Height = i;
 
 		*node = vectorLit;
 		return ResOk;
@@ -907,7 +911,7 @@ static Result ParseVarDecl(ASTNode** node)
 	varDecl->Type = ASTNodeVarDecl;
 	varDecl->Loc = loc;
 	varDecl->VarDecl.IsConst = isConst;
-	varDecl->VarDecl.HasType = false;
+	varDecl->VarDecl.HasDeclaredShape = false;
 	varDecl->VarDecl.Identifier = ParserPeek()->Lexeme;
 	ParserAdvance();
 
@@ -921,12 +925,12 @@ static Result ParseVarDecl(ASTNode** node)
 			return ResOk;
 		}
 
-		varDecl->VarDecl.Type = token->MatrixShape;
-		varDecl->VarDecl.HasType = true;
+		varDecl->VarDecl.Shape = token->MatrixShape;
+		varDecl->VarDecl.HasDeclaredShape = true;
 	}
 
 	if (!ParserMatch(TokenEqual)) {
-		if (!varDecl->VarDecl.HasType) {
+		if (!varDecl->VarDecl.HasDeclaredShape) {
 			// TODO: Source location
 			DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc.Line, ParserPeek()->Loc.LinePos, DIAG_ARG_CHAR(':'));
 			ParserSynchronize();
@@ -944,9 +948,8 @@ static Result ParseVarDecl(ASTNode** node)
 		return result;
 	}
 
-	if (!varDecl->VarDecl.HasType && varDecl->VarDecl.Expression) {
-		varDecl->VarDecl.Type.Height = varDecl->VarDecl.Expression->Literal.Shape.Height;
-		varDecl->VarDecl.Type.Width = varDecl->VarDecl.Expression->Literal.Shape.Width;
+	if (!varDecl->VarDecl.HasDeclaredShape && varDecl->VarDecl.Expression) {
+		varDecl->VarDecl.Shape = varDecl->VarDecl.Expression->MxLiteral.Shape;
 	}
 
 	*node = varDecl;
@@ -1077,14 +1080,14 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 	case ASTNodeNumber:
 		printf("%lf", node->Number);
 		break;
-	case ASTNodeLiteral:
-		printf("(lit %llux%llu ", node->Literal.Shape.Height, node->Literal.Shape.Width);
-		for (size_t i = 0; i < node->Literal.Shape.Height; ++i) {
+	case ASTNodeMxLiteral:
+		printf("(lit %zux%zu ", node->MxLiteral.Shape.Height, node->MxLiteral.Shape.Width);
+		for (size_t i = 0; i < node->MxLiteral.Shape.Height; ++i) {
 			printf("(row ");
-			for (size_t j = 0; j < node->Literal.Shape.Width; ++j) {
-				ParserPrintAST(node->Literal.Matrix[(i * node->Literal.Shape.Width) + j], 0);
+			for (size_t j = 0; j < node->MxLiteral.Shape.Width; ++j) {
+				ParserPrintAST(node->MxLiteral.Matrix[(i * node->MxLiteral.Shape.Width) + j], 0);
 
-				if (j < node->Literal.Shape.Width - 1) {
+				if (j < node->MxLiteral.Shape.Width - 1) {
 					printf(" ");
 				}
 			}
@@ -1127,8 +1130,12 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 			printf("(let ");
 		}
 		printf("%.*s", (i32)node->VarDecl.Identifier.SymbolLength, node->VarDecl.Identifier.Symbol);
-		if (node->VarDecl.HasType) {
-			printf(": %llux%llu", node->VarDecl.Type.Height, node->VarDecl.Type.Width);
+		if (node->VarDecl.HasDeclaredShape) {
+			if (node->VarDecl.Shape.Type == MxDyn) {
+				printf(": dyn");
+			} else {
+				printf(": %zux%zu", node->VarDecl.Shape.Height, node->VarDecl.Shape.Width);
+			}
 		}
 		printf(" = ");
 		ParserPrintAST(node->VarDecl.Expression, 0);

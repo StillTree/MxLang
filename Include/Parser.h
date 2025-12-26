@@ -1,14 +1,15 @@
 #pragma once
 
-#include "Matrix.h"
+#include "MxShape.h"
 #include "Memory/DynArena.h"
 #include "Memory/StatArena.h"
 #include "Memory/SymbolTable.h"
 #include "Tokenizer.h"
+#include "TypeChecker.h"
 #include "Types.h"
 
 typedef enum ASTNodeType {
-	ASTNodeLiteral,
+	ASTNodeMxLiteral,
 	ASTNodeBlock,
 	ASTNodeUnary,
 	ASTNodeGrouping,
@@ -32,8 +33,8 @@ typedef struct ASTNode {
 
 		struct {
 			struct ASTNode** Matrix;
-			MatrixShape Shape;
-		} Literal;
+			MxShape Shape;
+		} MxLiteral;
 
 		struct {
 			struct ASTNode** Nodes;
@@ -57,10 +58,10 @@ typedef struct ASTNode {
 
 		struct {
 			SymbolView Identifier;
-			MatrixShape Type;
+			MxShape Shape;
 			struct ASTNode* Expression;
 			bool IsConst;
-			bool HasType;
+			bool HasDeclaredShape;
 			usz ID;
 		} VarDecl;
 

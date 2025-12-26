@@ -1,7 +1,3 @@
-let a: 2x2dlfjks; = 10
+let a: dyn = 10
 
-const b = 10
-
-b = 1
-
-b
+a = [1 2][3 4]
