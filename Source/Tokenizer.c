@@ -10,11 +10,6 @@ static MxShape ParseMatrixShape(const char* str, usz strLength)
 	const char* strEnd = str + strLength;
 	MxShape shape = { 0 };
 
-	if (strLength == 3 && memcmp(str, "dyn", 3) == 0) {
-		shape.Type = MxDyn;
-		return shape;
-	}
-
 	while (*str != 'x') {
 		shape.Height *= 10;
 		shape.Height += (u64)*str - '0';
@@ -378,9 +373,6 @@ Result TokenizerNextToken(Token** token)
 
 			if (lexemeLength == 3 && memcmp(g_tokenizer.LexemeStart, "let", lexemeLength) == 0) {
 				TokenizerAddToken(TokenLet, nullptr, 0, nullptr);
-			} else if (lexemeLength == 3 && memcmp(g_tokenizer.LexemeStart, "dyn", lexemeLength) == 0) {
-				MxShape shape = { .Type = MxDyn, .Height = 0, .Width = 0 };
-				TokenizerAddToken(TokenMatrixShape, nullptr, 0, &shape);
 			} else if (lexemeLength == 5 && memcmp(g_tokenizer.LexemeStart, "const", lexemeLength) == 0) {
 				TokenizerAddToken(TokenConst, nullptr, 0, nullptr);
 			} else if (lexemeLength == 2 && memcmp(g_tokenizer.LexemeStart, "if", lexemeLength) == 0) {

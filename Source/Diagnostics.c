@@ -85,6 +85,7 @@ void DiagPrint(const Diag* diag)
 	}
 	fputc('\n', out);
 
+	// TODO: Spaces brake this
 	for (usz i = 0; i < numWidth; ++i) {
 		fputc(' ', out);
 	}

@@ -38,8 +38,7 @@ typedef enum TokenType : u16 {
 	TokenLessEqual,
 	TokenGreater,
 	TokenGreaterEqual,
-	TokenEof,
-	TokenError
+	TokenEof
 } TokenType;
 
 typedef struct SourceLoc {

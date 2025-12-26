@@ -5,7 +5,6 @@
 #include "Memory/StatArena.h"
 #include "Memory/SymbolTable.h"
 #include "Tokenizer.h"
-#include "TypeChecker.h"
 #include "Types.h"
 
 typedef enum ASTNodeType {

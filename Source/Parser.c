@@ -215,7 +215,6 @@ static Result ParsePrimary(ASTNode** node)
 		number->MxLiteral.Matrix[0]->Number = token->Number;
 		number->MxLiteral.Shape.Height = 1;
 		number->MxLiteral.Shape.Width = 1;
-		number->MxLiteral.Shape.Type = MxStat;
 
 		*node = number;
 		return ResOk;
@@ -337,7 +336,6 @@ static Result ParsePrimary(ASTNode** node)
 				zero->MxLiteral.Matrix[0]->Number = 0;
 				zero->MxLiteral.Shape.Height = 1;
 				zero->MxLiteral.Shape.Width = 1;
-				zero->MxLiteral.Shape.Type = MxStat;
 
 				matrixLit->MxLiteral.Matrix[(i * maxWidth) + j] = zero;
 
@@ -358,7 +356,6 @@ static Result ParsePrimary(ASTNode** node)
 
 		matrixLit->MxLiteral.Shape.Height = height;
 		matrixLit->MxLiteral.Shape.Width = maxWidth;
-		matrixLit->MxLiteral.Shape.Type = MxStat;
 
 		*node = matrixLit;
 		return ResOk;
@@ -376,7 +373,6 @@ static Result ParsePrimary(ASTNode** node)
 		vectorLit->Type = ASTNodeMxLiteral;
 		vectorLit->Loc = loc;
 		vectorLit->MxLiteral.Shape.Width = 1;
-		vectorLit->MxLiteral.Shape.Type = MxStat;
 		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&vectorLit->MxLiteral.Matrix, 8 * sizeof(ASTNode*));
 		if (result) {
 			return result;
@@ -1131,11 +1127,7 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 		}
 		printf("%.*s", (i32)node->VarDecl.Identifier.SymbolLength, node->VarDecl.Identifier.Symbol);
 		if (node->VarDecl.HasDeclaredShape) {
-			if (node->VarDecl.Shape.Type == MxDyn) {
-				printf(": dyn");
-			} else {
-				printf(": %zux%zu", node->VarDecl.Shape.Height, node->VarDecl.Shape.Width);
-			}
+			printf(": %zux%zu", node->VarDecl.Shape.Height, node->VarDecl.Shape.Width);
 		}
 		printf(" = ");
 		ParserPrintAST(node->VarDecl.Expression, 0);

@@ -1,3 +1,6 @@
-let a: dyn = 10
+let i: dyn = 0
 
-a = [1 2][3 4]
+while i <= 10 {
+display(i)
+i = i + 0.5
+}

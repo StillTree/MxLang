@@ -1,14 +1,14 @@
 #pragma once
 
 #include "Memory/DynArena.h"
-#include "Memory/StatArena.h"
+#include "Mx.h"
 #include "Result.h"
 
 typedef struct Interpreter {
-	DynArena DataArena;
-	StatArena VarTableArena;
+	DynArena MxArena;
+	Mx** VarTable;
 } Interpreter;
 
 Result InterpreterInit();
-Result InterpreterInterpret();
+void InterpreterInterpret();
 Result InterpreterDeinit();

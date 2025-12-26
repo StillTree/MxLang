@@ -190,7 +190,6 @@ MxShape* TypeCheck(ASTNode* node)
 
 		shape->Height = 1;
 		shape->Width = 1;
-		shape->Type = MxStat;
 		return shape;
 	}
 	case ASTNodeMxLiteral: {
@@ -201,6 +200,23 @@ MxShape* TypeCheck(ASTNode* node)
 		}
 
 		*shape = node->MxLiteral.Shape;
+
+		for (usz i = 0; i < node->MxLiteral.Shape.Height * node->MxLiteral.Shape.Width; ++i) {
+			MxShape* mx = TypeCheck(node->MxLiteral.Matrix[i]);
+
+			if (!mx) {
+				DIAG_EMIT(DiagUnexpectedToken, node->MxLiteral.Matrix[i]->Loc.Line, node->MxLiteral.Matrix[i]->Loc.LinePos,
+					DIAG_ARG_STRING("does not return val"));
+				return nullptr;
+			}
+
+			if (mx->Height != 1 || mx->Width != 1) {
+				DIAG_EMIT(DiagUnexpectedToken, node->MxLiteral.Matrix[i]->Loc.Line, node->MxLiteral.Matrix[i]->Loc.LinePos,
+					DIAG_ARG_STRING("mat lit only 1x1"));
+				return nullptr;
+			}
+		}
+
 		return shape;
 	}
 	case ASTNodeUnary: {
@@ -210,14 +226,20 @@ MxShape* TypeCheck(ASTNode* node)
 			return nullptr;
 		}
 
+		MxShape* operand = TypeCheck(node->Unary.Operand);
+		if (!operand) {
+			DIAG_EMIT(DiagUnexpectedToken, node->Unary.Operand->Loc.Line, node->Unary.Operand->Loc.LinePos,
+				DIAG_ARG_STRING("expression does not return value"));
+			return nullptr;
+		}
+
 		switch (node->Unary.Operator) {
 		case TokenSubtract:
-			*shape = node->Unary.Operand->MxLiteral.Shape;
+			*shape = *operand;
 			break;
 		case TokenTranspose:
-			shape->Height = node->Unary.Operand->MxLiteral.Shape.Width;
-			shape->Width = node->Unary.Operand->MxLiteral.Shape.Height;
-			shape->Type = MxStat;
+			shape->Height = operand->Width;
+			shape->Width = operand->Height;
 			break;
 		default:
 			return nullptr;
@@ -227,17 +249,21 @@ MxShape* TypeCheck(ASTNode* node)
 	case ASTNodeGrouping:
 		return TypeCheck(node->Grouping.Expression);
 	case ASTNodeBinary: {
+		MxShape* shape;
+		Result result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
+		if (result) {
+			return nullptr;
+		}
+
 		MxShape* left = TypeCheck(node->Binary.Left);
 		MxShape* right = TypeCheck(node->Binary.Right);
 
 		switch (node->Binary.Operator) {
 		case TokenAdd:
 		case TokenSubtract:
-			if ((left->Height == right->Height && left->Width == right->Width) || (right->Height == 1 && right->Width == 1)
-				|| left->Type == MxDyn) {
-				return left;
-			} else if ((left->Height == 1 && left->Width == 1) || right->Type == MxDyn) {
-				return right;
+			if (left->Height == right->Height && left->Width == right->Width) {
+				*shape = *left;
+				break;
 			} else {
 				DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("incompatible matrix shapes add/sub"));
 				return nullptr;
@@ -245,63 +271,40 @@ MxShape* TypeCheck(ASTNode* node)
 		case TokenMultiply:
 		case TokenDivide:
 			if (left->Width == right->Height) {
-				MxShape* shape;
-				Result result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-				if (result) {
-					return nullptr;
-				}
-
 				shape->Height = left->Height;
 				shape->Width = right->Width;
-				shape->Type = MxStat;
-				return shape;
-			} else if ((left->Height == 1 && left->Width == 1) || right->Type == MxDyn) {
-				return right;
-			} else if ((right->Height == 1 && right->Width == 1) || left->Type == MxDyn) {
-				return left;
+				break;
 			} else {
 				DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("incompatible matrix shapes mul/div"));
 				return nullptr;
 			}
 		case TokenToPower:
-			if (right->Type == MxDyn) {
-				return right;
-			} else if (right->Height != 1 || right->Width != 1) {
-				DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("incompatible matrix shapes pow"));
-				return nullptr;
-			} else {
-				return left;
-			}
+			*shape = *left;
+			break;
 		case TokenGreater:
 		case TokenGreaterEqual:
 		case TokenLess:
 		case TokenLessEqual:
 		case TokenEqualEqual:
 		case TokenNotEqual:
-			if ((left->Height == right->Height && left->Width == right->Width) || left->Type == MxDyn) {
-				return left;
-			} else if (right->Type == MxDyn) {
-				return right;
-			} else {
+			if (left->Height != right->Height || left->Width != right->Width) {
 				DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("incompatible matrix shapes comp/eq"));
-				return nullptr;
-			}
-		case TokenOr:
-		case TokenAnd: {
-			MxShape* shape;
-			Result result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-			if (result) {
 				return nullptr;
 			}
 
 			shape->Height = 1;
 			shape->Width = 1;
-			shape->Type = MxStat;
-			return shape;
-		}
+			break;
+		case TokenOr:
+		case TokenAnd:
+			shape->Height = 1;
+			shape->Width = 1;
+			break;
 		default:
 			return nullptr;
 		}
+
+		return shape;
 	}
 	case ASTNodeIfStmt: {
 		TypeCheck(node->IfStmt.Condition);
@@ -324,43 +327,25 @@ MxShape* TypeCheck(ASTNode* node)
 		MxShape* initShape = TypeCheck(node->VarDecl.Expression);
 		MxShape* varShape = &node->VarDecl.Shape;
 
+		g_typeChecker.TypeCheckingTable[id].Shape = *varShape;
+		g_typeChecker.TypeCheckingTable[id].IsConst = node->VarDecl.IsConst;
+
 		if (node->VarDecl.IsConst && !initShape) {
 			DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
 				DIAG_ARG_STRING("uninitialized const var"));
 			return nullptr;
 		}
 
-		if (initShape && initShape->Type == MxStat) {
-			if (varShape->Type == MxStat && (varShape->Height != initShape->Height || varShape->Width != initShape->Width)) {
+		if (initShape) {
+			if (varShape->Height != initShape->Height || varShape->Width != initShape->Width) {
 				DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
 					DIAG_ARG_STRING("uncompatible matrix shapes assign"));
 				return nullptr;
 			}
 
-			g_typeChecker.TypeCheckingTable[id].Shape = *varShape;
-			g_typeChecker.TypeCheckingTable[id].IsConst = node->VarDecl.IsConst;
 			return nullptr;
 		}
 
-		if (initShape && initShape->Type == MxDyn) {
-			if (varShape->Type == MxStat) {
-				DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
-					DIAG_ARG_STRING("assigning dyn mx to stat"));
-				return nullptr;
-			}
-
-			g_typeChecker.TypeCheckingTable[id].Shape = *varShape;
-			g_typeChecker.TypeCheckingTable[id].IsConst = node->VarDecl.IsConst;
-			return nullptr;
-		}
-
-		if (!initShape && varShape->Type == MxDyn) {
-			DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("uninitialized dyn var"));
-			return nullptr;
-		}
-
-		g_typeChecker.TypeCheckingTable[id].Shape = *varShape;
-		g_typeChecker.TypeCheckingTable[id].IsConst = node->VarDecl.IsConst;
 		return nullptr;
 	}
 	case ASTNodeAssignment: {
@@ -380,36 +365,49 @@ MxShape* TypeCheck(ASTNode* node)
 		}
 
 		if (!node->Assignment.Index) {
-			if (varShape->Type == MxStat && assignShape->Type == MxDyn) {
-				DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
-					DIAG_ARG_STRING("assigning dyn mx to stat"));
-				return nullptr;
-			}
-
-			if (varShape->Type == MxStat && assignShape->Type == MxStat
-				&& (varShape->Height != assignShape->Height || varShape->Width != assignShape->Width)) {
+			if (varShape->Height != assignShape->Height || varShape->Width != assignShape->Width) {
 				DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Expression->Loc.Line, node->Assignment.Expression->Loc.LinePos,
 					DIAG_ARG_STRING("uncompatible matrix shapes assign"));
 				return nullptr;
 			}
 		} else {
-			if (varShape->Type == MxStat && assignShape->Type == MxStat) {
-				if (node->Assignment.Index->IndexSuffix.J && (assignShape->Height != 1 || assignShape->Width != 1)) {
+			if (!node->Assignment.Index->IndexSuffix.J) {
+				MxShape* mxI = TypeCheck(node->Assignment.Index->IndexSuffix.I);
+				if (!mxI) {
+					DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Index->IndexSuffix.I->Loc.Line,
+						node->Assignment.Index->IndexSuffix.I->Loc.LinePos, DIAG_ARG_STRING("expression does not return value"));
+					return nullptr;
+				}
+
+				if (mxI->Height != 1 || mxI->Width != 1) {
+					DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Index->IndexSuffix.I->Loc.Line,
+						node->Assignment.Index->IndexSuffix.I->Loc.LinePos, DIAG_ARG_STRING("index can only be 1x1"));
+					return nullptr;
+				}
+
+				if (assignShape->Height != 1 || assignShape->Width != varShape->Width) {
 					DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Expression->Loc.Line, node->Assignment.Expression->Loc.LinePos,
 						DIAG_ARG_STRING("uncompatible matrix shapes assign"));
 					return nullptr;
 				}
+			}
 
-				if (!node->Assignment.Index->IndexSuffix.J) {
-					if (assignShape->Height != 1 || assignShape->Width != varShape->Width) {
-						DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Expression->Loc.Line, node->Assignment.Expression->Loc.LinePos,
-							DIAG_ARG_STRING("uncompatible matrix shapes assign"));
-						return nullptr;
-					}
-				}
-			} else if (varShape->Type == MxStat && assignShape->Type == MxDyn) {
-				DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
-					DIAG_ARG_STRING("assigning dyn mx to stat"));
+			MxShape* mxJ = TypeCheck(node->Assignment.Index->IndexSuffix.J);
+			if (!mxJ) {
+				DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Index->IndexSuffix.J->Loc.Line,
+					node->Assignment.Index->IndexSuffix.J->Loc.LinePos, DIAG_ARG_STRING("expression does not return value"));
+				return nullptr;
+			}
+
+			if (mxJ->Height != 1 || mxJ->Width != 1) {
+				DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Index->IndexSuffix.J->Loc.Line,
+					node->Assignment.Index->IndexSuffix.J->Loc.LinePos, DIAG_ARG_STRING("index can only be 1x1"));
+				return nullptr;
+			}
+
+			if (node->Assignment.Index->IndexSuffix.J && (assignShape->Height != 1 || assignShape->Width != 1)) {
+				DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Expression->Loc.Line, node->Assignment.Expression->Loc.LinePos,
+					DIAG_ARG_STRING("uncompatible matrix shapes assign"));
 				return nullptr;
 			}
 		}
@@ -433,28 +431,20 @@ MxShape* TypeCheck(ASTNode* node)
 		usz id = node->Identifier.ID;
 		MxShape* varShape = &g_typeChecker.TypeCheckingTable[id].Shape;
 
-		if (varShape->Type == MxDyn) {
-			shape->Type = MxDyn;
-			return shape;
-		}
-
 		if (node->Identifier.Index) {
 			if (node->Identifier.Index->IndexSuffix.J) {
 				shape->Height = 1;
 				shape->Width = 1;
-				shape->Type = MxStat;
 				return shape;
 			}
 
 			shape->Height = 1;
 			shape->Width = varShape->Width;
-			shape->Type = MxStat;
 			return shape;
 		}
 
 		shape->Height = varShape->Height;
 		shape->Width = varShape->Width;
-		shape->Type = MxStat;
 		return shape;
 	}
 	case ASTNodeBlock: {
