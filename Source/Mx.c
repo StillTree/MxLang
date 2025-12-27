@@ -3,7 +3,7 @@
 #include <math.h>
 #include <stdio.h>
 
-static bool IsF64Int(f64 num)
+bool IsF64Int(f64 num)
 {
 	if (!isfinite(num))
 		return false;

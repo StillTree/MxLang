@@ -9,6 +9,8 @@ typedef struct Mx {
 	f64 Data[];
 } Mx;
 
+bool IsF64Int(f64 num);
+
 void MxPrint(const Mx* mx);
 Result MxAdd(const Mx* left, const Mx* right, Mx* out);
 Result MxSubtract(const Mx* left, const Mx* right, Mx* out);

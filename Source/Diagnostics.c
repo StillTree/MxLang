@@ -10,7 +10,7 @@ DiagState g_diagState = { 0 };
 
 typedef enum DiagLevel { DiagLevelNote, DiagLevelWarning, DiagLevelError } DiagLevel;
 
-static const char* const DIAG_LEVEL_STR[] = { "Note", "Warning", "Error" };
+static const char* const DIAG_LEVEL_STR[] = { "\033[1;94mNote", "\033[1;33mWarning", "\033[1;31mError" };
 
 typedef struct DiagInfo {
 	DiagLevel Level;
@@ -37,7 +37,10 @@ static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelErro
 	[DiagUninitializedUntypedVar] = { DiagLevelError, "Variable %0 must have either a type declaration or an initialization expression" },
 	[DiagUninitializedConstVar] = { DiagLevelError, "A const variable %0 must have an initialization expression" },
 	[DiagAssignToConstVar] = { DiagLevelError, "Assignment to a constant variable" },
-	[DiagUnusedExpressionResult] = { DiagLevelWarning, "Unused expression result" } };
+	[DiagIndexOutOfRange] = { DiagLevelError, "Index %0 out of range for matrix of shape %1" },
+	[DiagIndexNotInteger] = { DiagLevelError, "Index %0 is not an integer" },
+	[DiagUnusedExpressionResult] = { DiagLevelWarning, "Unused expression result" },
+	[DiagEmptyFileParsed] = { DiagLevelNote, "Empty file parsed" } };
 
 static usz NumberWidth(usz num)
 {
@@ -202,6 +205,9 @@ void PrintDiagFormat(FILE* out, const char* format, const Diag* diag)
 			case DiagArgMxShape:
 				fprintf(out, "%zux%zu", diag->Args[i].MxShape.Height, diag->Args[i].MxShape.Width);
 				break;
+			case DiagArgNumber:
+				fprintf(out, "'%lf'", diag->Args[i].Number);
+				break;
 			}
 
 			++iter;
@@ -219,8 +225,11 @@ void DiagPrint(const Diag* diag)
 
 	FILE* out = info->Level == DiagLevelError ? stderr : stdout;
 
+	fputs("\033[1m", out);
 	fprintf(out, "%s:%zu:%zu %s: ", g_source.FileName, diag->Loc.Line, diag->Loc.LinePos, DIAG_LEVEL_STR[info->Level]);
+	fputs("\033[0m\033[1m", out);
 	PrintDiagFormat(out, info->Format, diag);
+	fputs("\033[0m", out);
 
 	fputc('\n', out);
 

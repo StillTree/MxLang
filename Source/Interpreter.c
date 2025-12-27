@@ -1,5 +1,6 @@
 #include "Interpreter.h"
 
+#include "Diagnostics.h"
 #include "Mx.h"
 #include "Parser.h"
 #include <stdio.h>
@@ -310,7 +311,21 @@ static Mx* Interpret(ASTNode* node)
 				// TODO: Panic!
 				return nullptr;
 			}
+
+			if (!IsF64Int(mxI->Data[0])) {
+				// TODO: Panic!
+				DIAG_EMIT(DiagIndexNotInteger, node->Assignment.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]));
+				return nullptr;
+			}
+
 			usz i = (usz)mxI->Data[0];
+
+			if (i < 1 || i > var->Shape.Height) {
+				// TODO: Panic!
+				DIAG_EMIT(DiagIndexOutOfRange, node->Assignment.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]),
+					DIAG_ARG_MX_SHAPE(var->Shape));
+				return nullptr;
+			}
 
 			if (node->Assignment.Index->IndexSuffix.J) {
 				Mx* mxJ = Interpret(node->Assignment.Index->IndexSuffix.J);
@@ -318,7 +333,21 @@ static Mx* Interpret(ASTNode* node)
 					// TODO: Panic!
 					return nullptr;
 				}
+
+				if (!IsF64Int(mxJ->Data[0])) {
+					// TODO: Panic!
+					DIAG_EMIT(DiagIndexNotInteger, node->Assignment.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]));
+					return nullptr;
+				}
+
 				usz j = (usz)mxJ->Data[0];
+
+				if (j < 1 || j > var->Shape.Width) {
+					// TODO: Panic!
+					DIAG_EMIT(DiagIndexOutOfRange, node->Assignment.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]),
+						DIAG_ARG_MX_SHAPE(var->Shape));
+					return nullptr;
+				}
 
 				var->Data[((i - 1) * var->Shape.Width) + j - 1] = newVal->Data[0];
 			} else {
@@ -366,7 +395,21 @@ static Mx* Interpret(ASTNode* node)
 				// TODO: Panic!
 				return nullptr;
 			}
+
+			if (!IsF64Int(mxI->Data[0])) {
+				// TODO: Panic!
+				DIAG_EMIT(DiagIndexNotInteger, node->Identifier.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]));
+				return nullptr;
+			}
+
 			usz i = (usz)mxI->Data[0];
+
+			if (i < 1 || i > var->Shape.Height) {
+				// TODO: Panic!
+				DIAG_EMIT(DiagIndexOutOfRange, node->Identifier.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]),
+					DIAG_ARG_MX_SHAPE(var->Shape));
+				return nullptr;
+			}
 
 			if (node->Identifier.Index->IndexSuffix.J) {
 				Mx* mxJ = Interpret(node->Identifier.Index->IndexSuffix.J);
@@ -374,7 +417,21 @@ static Mx* Interpret(ASTNode* node)
 					// TODO: Panic!
 					return nullptr;
 				}
+
+				if (!IsF64Int(mxJ->Data[0])) {
+					// TODO: Panic!
+					DIAG_EMIT(DiagIndexNotInteger, node->Identifier.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]));
+					return nullptr;
+				}
+
 				usz j = (usz)mxJ->Data[0];
+
+				if (j < 1 || j > var->Shape.Width) {
+					// TODO: Panic!
+					DIAG_EMIT(DiagIndexOutOfRange, node->Identifier.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]),
+						DIAG_ARG_MX_SHAPE(var->Shape));
+					return nullptr;
+				}
 
 				Mx* mx = AllocMx(1, 1);
 				mx->Data[0] = var->Data[((i - 1) * var->Shape.Width) + j - 1];

@@ -391,6 +391,12 @@ MxShape* TypeCheck(ASTNode* node)
 	case ASTNodeVarDecl: {
 		usz id = node->VarDecl.ID;
 		MxShape* initShape = TypeCheck(node->VarDecl.Expression);
+
+		if (node->VarDecl.Expression && !initShape) {
+			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->VarDecl.Expression->Loc);
+			return nullptr;
+		}
+
 		MxShape* varShape;
 		if (!node->VarDecl.HasDeclaredShape) {
 			if (!initShape) {

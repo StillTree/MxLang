@@ -26,10 +26,13 @@ typedef enum DiagType {
 	DiagUninitializedUntypedVar,
 	DiagUninitializedConstVar,
 	DiagAssignToConstVar,
-	DiagUnusedExpressionResult
+	DiagIndexOutOfRange,
+	DiagIndexNotInteger,
+	DiagUnusedExpressionResult,
+	DiagEmptyFileParsed
 } DiagType;
 
-typedef enum DiagArgType { DiagArgChar, DiagArgToken, DiagArgTokenType, DiagArgSymbolView, DiagArgMxShape } DiagArgType;
+typedef enum DiagArgType { DiagArgChar, DiagArgToken, DiagArgTokenType, DiagArgSymbolView, DiagArgMxShape, DiagArgNumber } DiagArgType;
 
 typedef struct DiagArg {
 	DiagArgType Type;
@@ -39,6 +42,7 @@ typedef struct DiagArg {
 		TokenType TokenType;
 		SymbolView SymbolView;
 		MxShape MxShape;
+		double Number;
 	};
 } DiagArg;
 
@@ -65,6 +69,7 @@ extern DiagState g_diagState;
 #define DIAG_ARG_TOKEN_TYPE(x) ((DiagArg) { DiagArgTokenType, { .TokenType = (x) } })
 #define DIAG_ARG_SYMBOL_VIEW(x) ((DiagArg) { DiagArgSymbolView, { .SymbolView = (x) } })
 #define DIAG_ARG_MX_SHAPE(x) ((DiagArg) { DiagArgMxShape, { .MxShape = (x) } })
+#define DIAG_ARG_NUMBER(x) ((DiagArg) { DiagArgNumber, { .Number = (x) } })
 
 #define DIAG_EMIT0(type, loc) DiagEmit((type), (loc), nullptr, 0)
 

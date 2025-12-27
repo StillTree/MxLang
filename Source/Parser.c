@@ -1036,6 +1036,10 @@ Result ParserParse()
 
 	topLevelBlock->Block.NodeCount = i;
 
+	if (i < 1) {
+		DIAG_EMIT0(DiagEmptyFileParsed, ParserPeek()->Loc);
+	}
+
 	return ResOk;
 }
 
