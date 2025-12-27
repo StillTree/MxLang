@@ -6,16 +6,12 @@ Parser g_parser = { 0 };
 
 static void ParserAdvance()
 {
-	Token* token;
-	Result result = TokenizerNextToken(&token);
+	TokenizerNextToken();
 }
 
 static Token* ParserPeek()
 {
-	Token* token;
-	Result result = TokenizerPeekToken(&token);
-
-	return token;
+	return TokenizerPeekToken();
 }
 
 static Token* ParserConsume()
@@ -61,25 +57,25 @@ static void ParserSynchronize()
 	}
 }
 
-static Result ParseStatement(ASTNode** node);
-static Result ParseBlock(ASTNode** node);
-static Result ParseVarDecl(ASTNode** node);
-static Result ParseWhileStmt(ASTNode** node);
-static Result ParseIfStmt(ASTNode** node);
-static Result ParseExprOrAssignment(ASTNode** node);
-static Result ParseExpression(ASTNode** node);
-static Result ParseLogicAnd(ASTNode** node);
-static Result ParseEquality(ASTNode** node);
-static Result ParseComparison(ASTNode** node);
-static Result ParseTerm(ASTNode** node);
-static Result ParseFactor(ASTNode** node);
-static Result ParseExponent(ASTNode** node);
-static Result ParseUnary(ASTNode** node);
-static Result ParsePostfix(ASTNode** node);
-static Result ParsePrimary(ASTNode** node);
-static Result ParseIdentifierPrimary(ASTNode** node);
+static ASTNode* ParseStatement();
+static ASTNode* ParseBlock();
+static ASTNode* ParseVarDecl();
+static ASTNode* ParseWhileStmt();
+static ASTNode* ParseIfStmt();
+static ASTNode* ParseExprOrAssignment();
+static ASTNode* ParseExpression();
+static ASTNode* ParseLogicAnd();
+static ASTNode* ParseEquality();
+static ASTNode* ParseComparison();
+static ASTNode* ParseTerm();
+static ASTNode* ParseFactor();
+static ASTNode* ParseExponent();
+static ASTNode* ParseUnary();
+static ASTNode* ParsePostfix();
+static ASTNode* ParsePrimary();
+static ASTNode* ParseIdentifierPrimary();
 
-static Result ParseIdentifierPrimary(ASTNode** node)
+static ASTNode* ParseIdentifierPrimary()
 {
 	SourceLoc loc = ParserPeek()->Loc;
 	SymbolView identifier = ParserConsume()->Lexeme;
@@ -87,18 +83,12 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 	// A function call
 	if (ParserMatch(TokenLeftRoundBracket)) {
 		ASTNode* functionCall;
-		Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&functionCall);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&functionCall));
 
 		functionCall->Type = ASTNodeFunctionCall;
 		functionCall->Loc = loc;
 		functionCall->FunctionCall.Identifier = identifier;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&functionCall->FunctionCall.CallArgs, 8 * sizeof(ASTNode*));
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&functionCall->FunctionCall.CallArgs, 8 * sizeof(ASTNode*)));
 
 		usz i = 0;
 		while (ParserPeek()->Type != TokenRightRoundBracket) {
@@ -106,58 +96,42 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 				if (!ParserMatch(TokenComma)) {
 					DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc, DIAG_ARG_TOKEN_TYPE(TokenComma));
 					ParserSynchronize();
-					*node = nullptr;
-					return ResOk;
+					return nullptr;
 				}
 			}
 
-			result = ParseExpression(&functionCall->FunctionCall.CallArgs[i]);
-			if (result) {
-				return result;
-			}
+			functionCall->FunctionCall.CallArgs[i] = ParseExpression();
 			++i;
 		}
 
 		if (!ParserMatch(TokenRightRoundBracket)) {
 			DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc, DIAG_ARG_TOKEN_TYPE(TokenRightRoundBracket));
 			ParserSynchronize();
-			*node = nullptr;
-			return ResOk;
+			return nullptr;
 		}
 		functionCall->FunctionCall.ArgCount = i;
 
-		*node = functionCall;
-		return ResOk;
+		return functionCall;
 	}
 
 	// Not a function call
 	ASTNode* indexSuffix = nullptr;
 	if (ParserMatch(TokenLeftSquareBracket)) {
 		ASTNode* i;
-		Result result = ParseExpression(&i);
-		if (result) {
-			return result;
-		}
+		i = ParseExpression();
 		ASTNode* j = nullptr;
 
 		if (ParserPeek()->Type != TokenRightSquareBracket) {
-			result = ParseExpression(&j);
-			if (result) {
-				return result;
-			}
+			j = ParseExpression();
 		}
 
 		if (!ParserMatch(TokenRightSquareBracket)) {
 			DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc, DIAG_ARG_TOKEN_TYPE(TokenRightSquareBracket));
 			ParserSynchronize();
-			*node = nullptr;
-			return ResOk;
+			return nullptr;
 		}
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&indexSuffix);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&indexSuffix));
 
 		indexSuffix->Type = ASTNodeIndexSuffix;
 		indexSuffix->IndexSuffix.I = i;
@@ -165,42 +139,29 @@ static Result ParseIdentifierPrimary(ASTNode** node)
 	}
 
 	ASTNode* astIdentifier;
-	Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&astIdentifier);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&astIdentifier));
 
 	astIdentifier->Type = ASTNodeIdentifier;
 	astIdentifier->Loc = loc;
 	astIdentifier->Identifier.Identifier = identifier;
 	astIdentifier->Identifier.Index = indexSuffix;
 
-	*node = astIdentifier;
-	return ResOk;
+	return astIdentifier;
 }
 
-static Result ParsePrimary(ASTNode** node)
+static ASTNode* ParsePrimary()
 {
 	Token token = *ParserPeek();
 
 	if (token.Type == TokenNumber) {
 		ASTNode* number;
-		Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&number);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&number));
 
 		number->Type = ASTNodeMxLiteral;
 		number->Loc = token.Loc;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&number->MxLiteral.Matrix, sizeof(ASTNode*));
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&number->MxLiteral.Matrix, sizeof(ASTNode*)));
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&number->MxLiteral.Matrix[0]);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&number->MxLiteral.Matrix[0]));
 
 		ParserAdvance();
 
@@ -210,22 +171,15 @@ static Result ParsePrimary(ASTNode** node)
 		number->MxLiteral.Shape.Height = 1;
 		number->MxLiteral.Shape.Width = 1;
 
-		*node = number;
-		return ResOk;
+		return number;
 	}
 
 	if (ParserMatch(TokenLeftRoundBracket)) {
 		ASTNode* expression;
-		Result result = ParseExpression(&expression);
-		if (result) {
-			return result;
-		}
+		expression = ParseExpression();
 
 		ASTNode* grouping;
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&grouping);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&grouping));
 
 		grouping->Type = ASTNodeGrouping;
 		grouping->Loc = token.Loc;
@@ -234,37 +188,28 @@ static Result ParsePrimary(ASTNode** node)
 		if (!ParserMatch(TokenRightRoundBracket)) {
 			DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc, DIAG_ARG_TOKEN_TYPE(TokenRightRoundBracket));
 			ParserSynchronize();
-			*node = nullptr;
-			return ResOk;
+			return nullptr;
 		}
 
-		*node = grouping;
-		return ResOk;
+		return grouping;
 	}
 
 	if (token.Type == TokenIdentifier) {
-		return ParseIdentifierPrimary(node);
+		return ParseIdentifierPrimary();
 	}
 
 	if (ParserMatch(TokenLeftSquareBracket)) {
 		ASTNode* matrixLit;
-		Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&matrixLit);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&matrixLit));
 
 		matrixLit->Type = ASTNodeMxLiteral;
 		matrixLit->Loc = token.Loc;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&matrixLit->MxLiteral.Matrix, 64 * sizeof(ASTNode*));
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&matrixLit->MxLiteral.Matrix, 64 * sizeof(ASTNode*)));
 
 		if (ParserMatch(TokenRightSquareBracket)) {
 			DIAG_EMIT0(DiagEmptyMxLiteralsNotAllowed, ParserPeek()->Loc);
 			ParserSynchronize();
-			*node = nullptr;
-			return ResOk;
+			return nullptr;
 		}
 
 		Tokenizer backup = g_tokenizer;
@@ -273,15 +218,14 @@ static Result ParsePrimary(ASTNode** node)
 		usz maxWidth = 0;
 		do {
 			while (ParserPeek()->Type != TokenRightSquareBracket && ParserPeek()->Type != TokenEof) {
-				ParseExpression(node);
+				ParseExpression();
 				++width;
 			}
 
 			if (!ParserMatch(TokenRightSquareBracket)) {
 				DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc, DIAG_ARG_TOKEN_TYPE(TokenRightSquareBracket));
 				ParserSynchronize();
-				*node = nullptr;
-				return ResOk;
+				return nullptr;
 			}
 
 			if (width > maxWidth) {
@@ -297,30 +241,18 @@ static Result ParsePrimary(ASTNode** node)
 		usz j = 0;
 		do {
 			while (ParserPeek()->Type != TokenRightSquareBracket) {
-				result = ParseExpression(&matrixLit->MxLiteral.Matrix[(i * maxWidth) + j]);
-				if (result) {
-					return result;
-				}
+				matrixLit->MxLiteral.Matrix[(i * maxWidth) + j] = ParseExpression();
 				++j;
 			}
 
 			while (j < maxWidth) {
 				ASTNode* zero;
-				result = StatArenaAlloc(&g_parser.ASTArena, (void**)&zero);
-				if (result) {
-					return result;
-				}
+				DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&zero));
 
 				zero->Type = ASTNodeMxLiteral;
-				result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&zero->MxLiteral.Matrix, sizeof(ASTNode*));
-				if (result) {
-					return result;
-				}
+				DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&zero->MxLiteral.Matrix, sizeof(ASTNode*)));
 
-				result = StatArenaAlloc(&g_parser.ASTArena, (void**)&zero->MxLiteral.Matrix[0]);
-				if (result) {
-					return result;
-				}
+				DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&zero->MxLiteral.Matrix[0]));
 
 				zero->MxLiteral.Matrix[0]->Type = ASTNodeNumber;
 				zero->MxLiteral.Matrix[0]->Number = 0;
@@ -335,8 +267,7 @@ static Result ParsePrimary(ASTNode** node)
 			if (!ParserMatch(TokenRightSquareBracket)) {
 				DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc, DIAG_ARG_TOKEN_TYPE(TokenRightSquareBracket));
 				ParserSynchronize();
-				*node = nullptr;
-				return ResOk;
+				return nullptr;
 			}
 
 			++i;
@@ -346,129 +277,94 @@ static Result ParsePrimary(ASTNode** node)
 		matrixLit->MxLiteral.Shape.Height = height;
 		matrixLit->MxLiteral.Shape.Width = maxWidth;
 
-		*node = matrixLit;
-		return ResOk;
+		return matrixLit;
 	}
 
 	if (token.Type == TokenLeftVectorBracket) {
 		ParserAdvance();
 
 		ASTNode* vectorLit;
-		Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&vectorLit);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&vectorLit));
 
 		vectorLit->Type = ASTNodeMxLiteral;
 		vectorLit->Loc = token.Loc;
 		vectorLit->MxLiteral.Shape.Width = 1;
-		result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&vectorLit->MxLiteral.Matrix, 8 * sizeof(ASTNode*));
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&vectorLit->MxLiteral.Matrix, 8 * sizeof(ASTNode*)));
 
 		if (ParserMatch(TokenRightVectorBracket)) {
 			DIAG_EMIT0(DiagEmptyVecLiteralsNotAllowed, ParserPeek()->Loc);
 			ParserSynchronize();
-			*node = nullptr;
-			return ResOk;
+			return nullptr;
 		}
 
 		usz i = 0;
 		while (ParserPeek()->Type != TokenRightVectorBracket) {
-			result = ParseExpression(&vectorLit->MxLiteral.Matrix[i]);
-			if (result) {
-				return result;
-			}
+			vectorLit->MxLiteral.Matrix[i] = ParseExpression();
 			++i;
 		}
 
 		if (!ParserMatch(TokenRightVectorBracket)) {
 			DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc, DIAG_ARG_TOKEN_TYPE(TokenRightVectorBracket));
 			ParserSynchronize();
-			*node = nullptr;
-			return ResOk;
+			return nullptr;
 		}
 
 		vectorLit->MxLiteral.Shape.Height = i;
 
-		*node = vectorLit;
-		return ResOk;
+		return vectorLit;
 	}
 
 	DIAG_EMIT(DiagUnexpectedToken, token.Loc, DIAG_ARG_TOKEN(token));
 	ParserSynchronize();
-	*node = nullptr;
-	return ResOk;
+	return nullptr;
 }
 
-static Result ParsePostfix(ASTNode** node)
+static ASTNode* ParsePostfix()
 {
-	ASTNode* primary;
-	Result result = ParsePrimary(&primary);
-	if (result) {
-		return result;
-	}
+	ASTNode* primary = ParsePrimary();
 
 	if (ParserPeek()->Type == TokenTranspose) {
 		TokenType operator = ParserPeek()->Type;
 		ParserAdvance();
 
 		ASTNode* postfix;
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&postfix);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&postfix));
 
 		postfix->Type = ASTNodeUnary;
 		postfix->Loc = primary->Loc;
 		postfix->Unary.Operator = operator;
 		postfix->Unary.Operand = primary;
-		*node = postfix;
-		return ResOk;
+		return postfix;
 	}
 
-	*node = primary;
-	return ResOk;
+	return primary;
 }
 
-static Result ParseUnary(ASTNode** node)
+static ASTNode* ParseUnary()
 {
 	if (ParserPeek()->Type == TokenSubtract) {
 		TokenType operator = ParserPeek()->Type;
 		SourceLoc loc = ParserPeek()->Loc;
 		ParserAdvance();
 
-		ASTNode* operand;
-		Result result = ParseUnary(&operand);
-		if (result) {
-			return result;
-		}
+		ASTNode* operand = ParseUnary();
 
 		ASTNode* unary;
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&unary);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&unary));
 
 		unary->Type = ASTNodeUnary;
 		unary->Loc = loc;
 		unary->Unary.Operator = operator;
 		unary->Unary.Operand = operand;
-		*node = unary;
-		return ResOk;
+		return unary;
 	}
 
-	return ParsePostfix(node);
+	return ParsePostfix();
 }
 
-static Result ParseExponent(ASTNode** node)
+static ASTNode* ParseExponent()
 {
-	ASTNode* left;
-	Result result = ParseUnary(&left);
-	if (result) {
-		return result;
-	}
+	ASTNode* left = ParseUnary();
 
 	while (ParserPeek()->Type == TokenToPower) {
 		TokenType operator = ParserPeek()->Type;
@@ -476,16 +372,9 @@ static Result ParseExponent(ASTNode** node)
 
 		ASTNode* temp = left;
 
-		ASTNode* right;
-		result = ParseUnary(&right);
-		if (result) {
-			return result;
-		}
+		ASTNode* right = ParseUnary();
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&left);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&left));
 
 		left->Type = ASTNodeBinary;
 		left->Loc = temp->Loc;
@@ -494,17 +383,12 @@ static Result ParseExponent(ASTNode** node)
 		left->Binary.Right = right;
 	}
 
-	*node = left;
-	return ResOk;
+	return left;
 }
 
-static Result ParseFactor(ASTNode** node)
+static ASTNode* ParseFactor()
 {
-	ASTNode* left;
-	Result result = ParseExponent(&left);
-	if (result) {
-		return result;
-	}
+	ASTNode* left = ParseExponent();
 
 	while (ParserPeek()->Type == TokenMultiply || ParserPeek()->Type == TokenDivide) {
 		TokenType operator = ParserPeek()->Type;
@@ -512,16 +396,9 @@ static Result ParseFactor(ASTNode** node)
 
 		ASTNode* temp = left;
 
-		ASTNode* right;
-		result = ParseExponent(&right);
-		if (result) {
-			return result;
-		}
+		ASTNode* right = ParseExponent();
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&left);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&left));
 
 		left->Type = ASTNodeBinary;
 		left->Loc = temp->Loc;
@@ -530,17 +407,12 @@ static Result ParseFactor(ASTNode** node)
 		left->Binary.Right = right;
 	}
 
-	*node = left;
-	return ResOk;
+	return left;
 }
 
-static Result ParseTerm(ASTNode** node)
+static ASTNode* ParseTerm()
 {
-	ASTNode* left;
-	Result result = ParseFactor(&left);
-	if (result) {
-		return result;
-	}
+	ASTNode* left = ParseFactor();
 
 	while (ParserPeek()->Type == TokenAdd || ParserPeek()->Type == TokenSubtract) {
 		TokenType operator = ParserPeek()->Type;
@@ -548,16 +420,9 @@ static Result ParseTerm(ASTNode** node)
 
 		ASTNode* temp = left;
 
-		ASTNode* right;
-		result = ParseFactor(&right);
-		if (result) {
-			return result;
-		}
+		ASTNode* right = ParseFactor();
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&left);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&left));
 
 		left->Type = ASTNodeBinary;
 		left->Loc = temp->Loc;
@@ -566,17 +431,12 @@ static Result ParseTerm(ASTNode** node)
 		left->Binary.Right = right;
 	}
 
-	*node = left;
-	return ResOk;
+	return left;
 }
 
-static Result ParseComparison(ASTNode** node)
+static ASTNode* ParseComparison()
 {
-	ASTNode* left;
-	Result result = ParseTerm(&left);
-	if (result) {
-		return result;
-	}
+	ASTNode* left = ParseTerm();
 
 	while (ParserPeek()->Type == TokenLess || ParserPeek()->Type == TokenLessEqual || ParserPeek()->Type == TokenGreater
 		|| ParserPeek()->Type == TokenGreaterEqual) {
@@ -585,16 +445,9 @@ static Result ParseComparison(ASTNode** node)
 
 		ASTNode* temp = left;
 
-		ASTNode* right;
-		result = ParseTerm(&right);
-		if (result) {
-			return result;
-		}
+		ASTNode* right = ParseTerm();
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&left);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&left));
 
 		left->Type = ASTNodeBinary;
 		left->Loc = temp->Loc;
@@ -603,17 +456,12 @@ static Result ParseComparison(ASTNode** node)
 		left->Binary.Right = right;
 	}
 
-	*node = left;
-	return ResOk;
+	return left;
 }
 
-static Result ParseEquality(ASTNode** node)
+static ASTNode* ParseEquality()
 {
-	ASTNode* left;
-	Result result = ParseComparison(&left);
-	if (result) {
-		return result;
-	}
+	ASTNode* left = ParseComparison();
 
 	while (ParserPeek()->Type == TokenEqualEqual || ParserPeek()->Type == TokenNotEqual) {
 		TokenType operator = ParserPeek()->Type;
@@ -621,16 +469,9 @@ static Result ParseEquality(ASTNode** node)
 
 		ASTNode* temp = left;
 
-		ASTNode* right;
-		result = ParseComparison(&right);
-		if (result) {
-			return result;
-		}
+		ASTNode* right = ParseComparison();
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&left);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&left));
 
 		left->Type = ASTNodeBinary;
 		left->Loc = temp->Loc;
@@ -639,17 +480,12 @@ static Result ParseEquality(ASTNode** node)
 		left->Binary.Right = right;
 	}
 
-	*node = left;
-	return ResOk;
+	return left;
 }
 
-static Result ParseLogicAnd(ASTNode** node)
+static ASTNode* ParseLogicAnd()
 {
-	ASTNode* left;
-	Result result = ParseEquality(&left);
-	if (result) {
-		return result;
-	}
+	ASTNode* left = ParseEquality();
 
 	while (ParserPeek()->Type == TokenAnd) {
 		TokenType operator = ParserPeek()->Type;
@@ -657,16 +493,9 @@ static Result ParseLogicAnd(ASTNode** node)
 
 		ASTNode* temp = left;
 
-		ASTNode* right;
-		result = ParseEquality(&right);
-		if (result) {
-			return result;
-		}
+		ASTNode* right = ParseEquality();
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&left);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&left));
 
 		left->Type = ASTNodeBinary;
 		left->Loc = temp->Loc;
@@ -675,17 +504,12 @@ static Result ParseLogicAnd(ASTNode** node)
 		left->Binary.Right = right;
 	}
 
-	*node = left;
-	return ResOk;
+	return left;
 }
 
-static Result ParseExpression(ASTNode** node)
+static ASTNode* ParseExpression()
 {
-	ASTNode* left;
-	Result result = ParseLogicAnd(&left);
-	if (result) {
-		return result;
-	}
+	ASTNode* left = ParseLogicAnd();
 
 	while (ParserPeek()->Type == TokenOr) {
 		TokenType operator = ParserPeek()->Type;
@@ -693,16 +517,9 @@ static Result ParseExpression(ASTNode** node)
 
 		ASTNode* temp = left;
 
-		ASTNode* right;
-		result = ParseLogicAnd(&right);
-		if (result) {
-			return result;
-		}
+		ASTNode* right = ParseLogicAnd();
 
-		result = StatArenaAlloc(&g_parser.ASTArena, (void**)&left);
-		if (result) {
-			return result;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&left));
 
 		left->Type = ASTNodeBinary;
 		left->Loc = temp->Loc;
@@ -711,11 +528,10 @@ static Result ParseExpression(ASTNode** node)
 		left->Binary.Right = right;
 	}
 
-	*node = left;
-	return ResOk;
+	return left;
 }
 
-static Result ParseExprOrAssignment(ASTNode** node)
+static ASTNode* ParseExprOrAssignment()
 {
 	Token* token = ParserPeek();
 	SourceLoc loc = token->Loc;
@@ -728,32 +544,21 @@ static Result ParseExprOrAssignment(ASTNode** node)
 
 		ASTNode* indexSuffix = nullptr;
 		if (ParserMatch(TokenLeftSquareBracket)) {
-			ASTNode* i;
-			Result result = ParseExpression(&i);
-			if (result) {
-				return result;
-			}
+			ASTNode* i = ParseExpression();
 			ASTNode* j = nullptr;
 
 			token = ParserPeek();
 			if (token->Type != TokenRightSquareBracket) {
-				result = ParseExpression(&j);
-				if (result) {
-					return result;
-				}
+				j = ParseExpression();
 			}
 
 			if (!ParserMatch(TokenRightSquareBracket)) {
 				DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc, DIAG_ARG_TOKEN_TYPE(TokenRightSquareBracket));
 				ParserSynchronize();
-				*node = nullptr;
-				return ResOk;
+				return nullptr;
 			}
 
-			result = StatArenaAlloc(&g_parser.ASTArena, (void**)&indexSuffix);
-			if (result) {
-				return result;
-			}
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&indexSuffix));
 
 			indexSuffix->Type = ASTNodeIndexSuffix;
 			indexSuffix->IndexSuffix.I = i;
@@ -763,69 +568,45 @@ static Result ParseExprOrAssignment(ASTNode** node)
 		// This is an assignment
 		if (ParserMatch(TokenEqual)) {
 			ASTNode* assignment;
-			Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&assignment);
-			if (result) {
-				return result;
-			}
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&assignment));
 
 			assignment->Type = ASTNodeAssignment;
 			assignment->Loc = loc;
 			assignment->Assignment.Identifier = identifier;
 			assignment->Assignment.Index = indexSuffix;
-			result = ParseExpression(&assignment->Assignment.Expression);
-			if (result) {
-				return result;
-			}
+			assignment->Assignment.Expression = ParseExpression();
 
-			*node = assignment;
-			return ResOk;
+			return assignment;
 		}
 
 		// Not an assignment
 		g_tokenizer = backup;
 	}
 
-	return ParseExpression(node);
+	return ParseExpression();
 }
 
-static Result ParseIfStmt(ASTNode** node)
+static ASTNode* ParseIfStmt()
 {
 	SourceLoc loc = ParserPeek()->Loc;
 	ParserAdvance();
 
-	ASTNode* condition;
-	Result result = ParseExpression(&condition);
-	if (result) {
-		return result;
-	}
+	ASTNode* condition = ParseExpression();
 
-	ASTNode* body;
-	result = ParseBlock(&body);
-	if (result) {
-		return result;
-	}
+	ASTNode* body = ParseBlock();
 
 	ASTNode* elseBody = nullptr;
 	if (ParserMatch(TokenElse)) {
 		Token* token = ParserPeek();
 		if (token->Type == TokenIf) {
-			result = ParseIfStmt(&elseBody);
-			if (result) {
-				return result;
-			}
+			elseBody = ParseIfStmt();
 		} else {
-			result = ParseBlock(&elseBody);
-			if (result) {
-				return result;
-			}
+			elseBody = ParseBlock();
 		}
 	}
 
 	ASTNode* ifStmt;
-	result = StatArenaAlloc(&g_parser.ASTArena, (void**)&ifStmt);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&ifStmt));
 
 	ifStmt->Type = ASTNodeIfStmt;
 	ifStmt->Loc = loc;
@@ -833,42 +614,29 @@ static Result ParseIfStmt(ASTNode** node)
 	ifStmt->IfStmt.ThenBlock = body;
 	ifStmt->IfStmt.ElseBlock = elseBody;
 
-	*node = ifStmt;
-	return ResOk;
+	return ifStmt;
 }
 
-static Result ParseWhileStmt(ASTNode** node)
+static ASTNode* ParseWhileStmt()
 {
 	SourceLoc loc = ParserPeek()->Loc;
 	ParserAdvance();
 
-	ASTNode* condition;
-	Result result = ParseExpression(&condition);
-	if (result) {
-		return result;
-	}
+	ASTNode* condition = ParseExpression();
 
-	ASTNode* body;
-	result = ParseBlock(&body);
-	if (result) {
-		return result;
-	}
+	ASTNode* body = ParseBlock();
 
 	ASTNode* whileStmt;
-	result = StatArenaAlloc(&g_parser.ASTArena, (void**)&whileStmt);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&whileStmt));
 
 	whileStmt->Type = ASTNodeWhileStmt;
 	whileStmt->Loc = loc;
 	whileStmt->WhileStmt.Body = body;
 	whileStmt->WhileStmt.Condition = condition;
-	*node = whileStmt;
-	return ResOk;
+	return whileStmt;
 }
 
-static Result ParseVarDecl(ASTNode** node)
+static ASTNode* ParseVarDecl()
 {
 	Token* token = ParserConsume();
 	SourceLoc loc = token->Loc;
@@ -878,15 +646,11 @@ static Result ParseVarDecl(ASTNode** node)
 	if (token->Type != TokenIdentifier) {
 		DIAG_EMIT(DiagExpectedToken, token->Loc, DIAG_ARG_TOKEN_TYPE(TokenIdentifier));
 		ParserSynchronize();
-		*node = nullptr;
-		return ResOk;
+		return nullptr;
 	}
 
 	ASTNode* varDecl;
-	Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&varDecl);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&varDecl));
 
 	varDecl->Type = ASTNodeVarDecl;
 	varDecl->Loc = loc;
@@ -900,8 +664,7 @@ static Result ParseVarDecl(ASTNode** node)
 		if (token->Type != TokenMatrixShape) {
 			DIAG_EMIT(DiagExpectedToken, token->Loc, DIAG_ARG_TOKEN_TYPE(TokenMatrixShape));
 			ParserSynchronize();
-			*node = nullptr;
-			return ResOk;
+			return nullptr;
 		}
 
 		varDecl->VarDecl.Shape = token->MatrixShape;
@@ -912,46 +675,33 @@ static Result ParseVarDecl(ASTNode** node)
 		if (!varDecl->VarDecl.HasDeclaredShape) {
 			DIAG_EMIT(DiagExpectedToken, ParserPeek()->Loc, DIAG_ARG_TOKEN_TYPE(TokenColon));
 			ParserSynchronize();
-			*node = nullptr;
-			return ResOk;
+			return nullptr;
 		}
 
 		varDecl->VarDecl.Expression = nullptr;
-		*node = varDecl;
-		return ResOk;
+		return varDecl;
 	}
 
-	result = ParseExpression(&varDecl->VarDecl.Expression);
-	if (result) {
-		return result;
-	}
+	varDecl->VarDecl.Expression = ParseExpression();
 
-	*node = varDecl;
-	return ResOk;
+	return varDecl;
 }
 
-static Result ParseBlock(ASTNode** node)
+static ASTNode* ParseBlock()
 {
 	SourceLoc loc = ParserPeek()->Loc;
 	if (!ParserMatch(TokenLeftCurlyBracket)) {
 		DIAG_EMIT(DiagExpectedToken, loc, DIAG_ARG_TOKEN_TYPE(TokenLeftCurlyBracket));
 		ParserSynchronize();
-		*node = nullptr;
-		return ResOk;
+		return nullptr;
 	}
 
 	ASTNode* block;
-	Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&block);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&block));
 
 	block->Type = ASTNodeBlock;
 	block->Loc = loc;
-	result = DynArenaAlloc(&g_parser.ArraysArena, (void**)&block->Block.Nodes, 64 * sizeof(ASTNode*));
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&block->Block.Nodes, 64 * sizeof(ASTNode*)));
 
 	usz i = 0;
 	while (!ParserMatch(TokenRightCurlyBracket)) {
@@ -959,15 +709,10 @@ static Result ParseBlock(ASTNode** node)
 		if (token->Type == TokenEof) {
 			DIAG_EMIT(DiagExpectedToken, token->Loc, DIAG_ARG_TOKEN_TYPE(TokenRightCurlyBracket));
 			ParserSynchronize();
-			*node = nullptr;
-			return ResOk;
+			return nullptr;
 		}
 
-		ASTNode* statement;
-		result = ParseStatement(&statement);
-		if (result) {
-			return result;
-		}
+		ASTNode* statement = ParseStatement();
 
 		block->Block.Nodes[i] = statement;
 
@@ -976,41 +721,34 @@ static Result ParseBlock(ASTNode** node)
 
 	block->Block.NodeCount = i;
 
-	*node = block;
-	return ResOk;
+	return block;
 }
 
-static Result ParseStatement(ASTNode** node)
+static ASTNode* ParseStatement()
 {
 	Token* token = ParserPeek();
 	switch (token->Type) {
 	case TokenConst:
 	case TokenLet:
-		return ParseVarDecl(node);
+		return ParseVarDecl();
 	case TokenIf:
-		return ParseIfStmt(node);
+		return ParseIfStmt();
 	case TokenWhile:
-		return ParseWhileStmt(node);
+		return ParseWhileStmt();
 	case TokenLeftCurlyBracket:
-		return ParseBlock(node);
+		return ParseBlock();
 	default:
-		return ParseExprOrAssignment(node);
+		return ParseExprOrAssignment();
 	}
 }
 
-Result ParserParse()
+void ParserParse()
 {
 	ASTNode* topLevelBlock;
-	Result result = StatArenaAlloc(&g_parser.ASTArena, (void**)&topLevelBlock);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&topLevelBlock));
 
 	topLevelBlock->Type = ASTNodeBlock;
-	result = DynArenaAllocZeroed(&g_parser.ArraysArena, (void**)&topLevelBlock->Block.Nodes, 64 * sizeof(ASTNode*));
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(DynArenaAllocZeroed(&g_parser.ArraysArena, (void**)&topLevelBlock->Block.Nodes, 64 * sizeof(ASTNode*)));
 
 	usz i = 0;
 	while (true) {
@@ -1019,12 +757,7 @@ Result ParserParse()
 			break;
 		}
 
-		ASTNode* node;
-		result = ParseStatement(&node);
-		if (result) {
-			return result;
-		}
-
+		ASTNode* node = ParseStatement();
 		if (!node) {
 			continue;
 		}
@@ -1039,8 +772,6 @@ Result ParserParse()
 	if (i < 1) {
 		DIAG_EMIT0(DiagEmptyFileParsed, ParserPeek()->Loc);
 	}
-
-	return ResOk;
 }
 
 void ParserPrintAST(const ASTNode* node, usz indents)
@@ -1178,22 +909,16 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 	}
 }
 
-Result ParserInit()
+void ParserInit()
 {
-	Result result = StatArenaInit(&g_parser.ASTArena, sizeof(ASTNode));
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(StatArenaInit(&g_parser.ASTArena, sizeof(ASTNode)));
 
-	return DynArenaInit(&g_parser.ArraysArena);
+	DIAG_PANIC_ON_ERR(DynArenaInit(&g_parser.ArraysArena));
 }
 
-Result ParserDeinit()
+void ParserDeinit()
 {
-	Result result = DynArenaDeinit(&g_parser.ArraysArena);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(DynArenaDeinit(&g_parser.ArraysArena));
 
-	return StatArenaDeinit(&g_parser.ASTArena);
+	DIAG_PANIC_ON_ERR(StatArenaDeinit(&g_parser.ASTArena));
 }

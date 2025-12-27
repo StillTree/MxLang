@@ -1,10 +1,11 @@
 #pragma once
 
 #include "Memory/StatArena.h"
+#include "Result.h"
 #include "Tokenizer.h"
 #include "Types.h"
 
-static constexpr usz MAX_DIAG_ARGS = 2;
+static constexpr usz MAX_DIAG_ARGS = 3;
 
 typedef enum DiagType {
 	DiagExpectedToken,
@@ -36,11 +37,22 @@ typedef enum DiagType {
 	DiagLogInvalidBase,
 	DiagLogInvalidArg,
 	DiagSqrtInvalidArg,
+	DiagDivisionByZero,
+	DiagPoweringToNonInt,
+	DiagInternalError,
 	DiagUnusedExpressionResult,
 	DiagEmptyFileParsed
 } DiagType;
 
-typedef enum DiagArgType { DiagArgChar, DiagArgToken, DiagArgTokenType, DiagArgSymbolView, DiagArgMxShape, DiagArgNumber } DiagArgType;
+typedef enum DiagArgType {
+	DiagArgChar,
+	DiagArgToken,
+	DiagArgTokenType,
+	DiagArgSymbolView,
+	DiagArgMxShape,
+	DiagArgNumber,
+	DiagArgResult
+} DiagArgType;
 
 typedef struct DiagArg {
 	DiagArgType Type;
@@ -51,6 +63,7 @@ typedef struct DiagArg {
 		SymbolView SymbolView;
 		MxShape MxShape;
 		double Number;
+		Result Result;
 	};
 } DiagArg;
 
@@ -68,9 +81,18 @@ typedef struct DiagState {
 Result DiagInit();
 void DiagEmit(DiagType type, SourceLoc loc, const DiagArg* args, usz argCount);
 usz DiagReport();
+[[noreturn]] void DiagPanic(Result result, const char* fileName, i32 lineNumber);
 Result DiagDeinit();
 
 extern DiagState g_diagState;
+
+#define DIAG_PANIC_ON_ERR(x)                                                                                                               \
+	do {                                                                                                                                   \
+		Result r = (x);                                                                                                               \
+		if (r) {                                                                                                                      \
+			DiagPanic(r, __FILE_NAME__, __LINE__);                                                                                    \
+		}                                                                                                                                  \
+	} while (false)
 
 #define DIAG_ARG_CHAR(x) ((DiagArg) { DiagArgChar, { .Char = (x) } })
 #define DIAG_ARG_TOKEN(x) ((DiagArg) { DiagArgToken, { .Token = (x) } })
@@ -78,6 +100,7 @@ extern DiagState g_diagState;
 #define DIAG_ARG_SYMBOL_VIEW(x) ((DiagArg) { DiagArgSymbolView, { .SymbolView = (x) } })
 #define DIAG_ARG_MX_SHAPE(x) ((DiagArg) { DiagArgMxShape, { .MxShape = (x) } })
 #define DIAG_ARG_NUMBER(x) ((DiagArg) { DiagArgNumber, { .Number = (x) } })
+#define DIAG_ARG_RESULT(x) ((DiagArg) { DiagArgResult, { .Result = (x) } })
 
 #define DIAG_EMIT0(type, loc) DiagEmit((type), (loc), nullptr, 0)
 

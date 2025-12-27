@@ -69,8 +69,8 @@ typedef struct Tokenizer {
 
 Result TokenizerInit();
 Result TokenizerScan();
-Result TokenizerNextToken(Token** token);
-Result TokenizerPeekToken(Token** token);
+Token* TokenizerNextToken();
+Token* TokenizerPeekToken();
 Result TokenizerDeinit();
 
 extern Tokenizer g_tokenizer;

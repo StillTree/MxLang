@@ -14,23 +14,18 @@ static usz GetSymbolID()
 	return id++;
 }
 
-static Result BindingEnterScope()
+static void BindingEnterScope()
 {
 	BindingScope* temp = g_typeChecker.CurBindingScope;
 
-	Result result = DynArenaAllocZeroed(
-		&g_typeChecker.BindingArena, (void**)&g_typeChecker.CurBindingScope, sizeof(BindingScope) + (64 * sizeof(BindingEntry)));
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(DynArenaAllocZeroed(
+		&g_typeChecker.BindingArena, (void**)&g_typeChecker.CurBindingScope, sizeof(BindingScope) + (64 * sizeof(BindingEntry))));
 
 	g_typeChecker.CurBindingScope->Parent = temp;
-	return ResOk;
 }
 
 static Result BindingExitScope()
 {
-	// TODO: Deallocate the previous scope!
 	g_typeChecker.CurBindingScope = g_typeChecker.CurBindingScope->Parent;
 	return ResOk;
 }
@@ -66,155 +61,110 @@ static Result BindingInsert(BindingScope* scope, const char* name, usz* id)
 	return ResOk;
 }
 
-static Result SymbolBind(ASTNode* node)
+static void SymbolBind(ASTNode* node)
 {
 	if (!node) {
-		return ResOk;
+		return;
 	}
 
 	switch (node->Type) {
 	case ASTNodeMxLiteral: {
 		for (usz i = 0; i < node->MxLiteral.Shape.Height * node->MxLiteral.Shape.Width; ++i) {
-			Result result = SymbolBind(node->MxLiteral.Matrix[i]);
-			if (result) {
-				return result;
-			}
+			SymbolBind(node->MxLiteral.Matrix[i]);
 		}
 
-		return ResOk;
+		break;
 	}
 	case ASTNodeBlock: {
-		Result result = BindingEnterScope();
-		if (result) {
-			return result;
-		}
+		BindingEnterScope();
 
 		for (usz i = 0; i < node->Block.NodeCount; ++i) {
-			result = SymbolBind(node->Block.Nodes[i]);
-			if (result) {
-				return result;
-			}
+			SymbolBind(node->Block.Nodes[i]);
 		}
 
-		return BindingExitScope();
+		DIAG_PANIC_ON_ERR(BindingExitScope());
+		break;
 	}
 	case ASTNodeUnary:
-		return SymbolBind(node->Unary.Operand);
+		SymbolBind(node->Unary.Operand);
+		break;
 	case ASTNodeGrouping:
-		return SymbolBind(node->Grouping.Expression);
+		SymbolBind(node->Grouping.Expression);
+		break;
 	case ASTNodeBinary: {
-		Result result = SymbolBind(node->Binary.Left);
-		if (result) {
-			return result;
-		}
-
-		return SymbolBind(node->Binary.Right);
+		SymbolBind(node->Binary.Left);
+		SymbolBind(node->Binary.Right);
+		break;
 	}
 	case ASTNodeIfStmt: {
-		Result result = SymbolBind(node->IfStmt.Condition);
-		if (result) {
-			return result;
-		}
-
-		result = SymbolBind(node->IfStmt.ThenBlock);
-		if (result) {
-			return result;
-		}
-
-		return SymbolBind(node->IfStmt.ElseBlock);
+		SymbolBind(node->IfStmt.Condition);
+		SymbolBind(node->IfStmt.ThenBlock);
+		SymbolBind(node->IfStmt.ElseBlock);
+		break;
 	}
 	case ASTNodeWhileStmt: {
-		Result result = SymbolBind(node->WhileStmt.Condition);
-		if (result) {
-			return result;
-		}
-
-		return SymbolBind(node->WhileStmt.Body);
+		SymbolBind(node->WhileStmt.Condition);
+		SymbolBind(node->WhileStmt.Body);
+		break;
 	}
 	case ASTNodeVarDecl: {
 		usz newID;
 		Result result = BindingInsert(g_typeChecker.CurBindingScope, node->VarDecl.Identifier.Symbol, &newID);
 		if (result) {
 			DIAG_EMIT0(DiagRedeclarationInScope, node->Loc);
-			return ResOk;
+			return;
 		}
 
 		node->VarDecl.ID = newID;
 
-		if (node->VarDecl.Expression) {
-			result = SymbolBind(node->VarDecl.Expression);
-			if (result) {
-				return result;
-			}
-		}
+		SymbolBind(node->VarDecl.Expression);
 
-		return ResOk;
+		break;
 	}
 	case ASTNodeAssignment: {
 		usz id;
 		Result result = BindingLookup(g_typeChecker.CurBindingScope, node->Assignment.Identifier.Symbol, &id);
 		if (result) {
 			DIAG_EMIT(DiagUndeclaredVarUsed, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->Assignment.Identifier));
-			return ResOk;
+			return;
 		}
 
 		node->Assignment.ID = id;
 
-		if (node->Assignment.Index) {
-			result = SymbolBind(node->Assignment.Index);
-			if (result) {
-				return result;
-			}
-		}
+		SymbolBind(node->Assignment.Index);
 
-		return SymbolBind(node->Assignment.Expression);
+		SymbolBind(node->Assignment.Expression);
+
+		break;
 	}
 	case ASTNodeFunctionCall: {
 		for (usz i = 0; i < node->FunctionCall.ArgCount; ++i) {
-			Result result = SymbolBind(node->FunctionCall.CallArgs[i]);
-			if (result) {
-				return result;
-			}
+			SymbolBind(node->FunctionCall.CallArgs[i]);
 		}
 
-		return ResOk;
+		break;
 	}
 	case ASTNodeIdentifier: {
 		usz id;
 		Result result = BindingLookup(g_typeChecker.CurBindingScope, node->Identifier.Identifier.Symbol, &id);
 		if (result) {
 			DIAG_EMIT(DiagUndeclaredVarUsed, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->Identifier.Identifier));
-			return ResOk;
+			return;
 		}
 
 		node->Identifier.ID = id;
 
-		if (node->Identifier.Index) {
-			result = SymbolBind(node->Identifier.Index);
-			if (result) {
-				return result;
-			}
-		}
+		SymbolBind(node->Identifier.Index);
 
-		return ResOk;
+		break;
 	}
 	case ASTNodeIndexSuffix: {
-		Result result = SymbolBind(node->IndexSuffix.I);
-		if (result) {
-			return result;
-		}
-
-		if (node->IndexSuffix.J) {
-			result = SymbolBind(node->IndexSuffix.J);
-			if (result) {
-				return result;
-			}
-		}
-
-		return ResOk;
+		SymbolBind(node->IndexSuffix.I);
+		SymbolBind(node->IndexSuffix.J);
+		break;
 	}
 	default:
-		return ResOk;
+		break;
 	}
 }
 
@@ -244,10 +194,7 @@ MxShape* TypeCheck(ASTNode* node)
 	switch (node->Type) {
 	case ASTNodeNumber: {
 		MxShape* shape;
-		Result result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-		if (result) {
-			return nullptr;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
 
 		shape->Height = 1;
 		shape->Width = 1;
@@ -255,10 +202,7 @@ MxShape* TypeCheck(ASTNode* node)
 	}
 	case ASTNodeMxLiteral: {
 		MxShape* shape;
-		Result result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-		if (result) {
-			return nullptr;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
 
 		*shape = node->MxLiteral.Shape;
 
@@ -280,10 +224,7 @@ MxShape* TypeCheck(ASTNode* node)
 	}
 	case ASTNodeUnary: {
 		MxShape* shape;
-		Result result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-		if (result) {
-			return nullptr;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
 
 		MxShape* operand = TypeCheck(node->Unary.Operand);
 		if (!operand) {
@@ -308,10 +249,7 @@ MxShape* TypeCheck(ASTNode* node)
 		return TypeCheck(node->Grouping.Expression);
 	case ASTNodeBinary: {
 		MxShape* shape;
-		Result result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-		if (result) {
-			return nullptr;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
 
 		MxShape* left = TypeCheck(node->Binary.Left);
 		if (!left) {
@@ -328,14 +266,11 @@ MxShape* TypeCheck(ASTNode* node)
 		switch (node->Binary.Operator) {
 		case TokenAdd:
 		case TokenSubtract:
-			if (left->Height == right->Height && left->Width == right->Width) {
+			if ((left->Height == right->Height && left->Width == right->Width) || (right->Height == 1 && right->Width == 1)) {
 				*shape = *left;
 				break;
 			} else if (left->Height == 1 && left->Width == 1) {
 				*shape = *right;
-				break;
-			} else if (right->Height == 1 && right->Width == 1) {
-				*shape = *left;
 				break;
 			} else {
 				DIAG_EMIT(DiagMxLiteralShapesDifferAddSub, node->Loc, DIAG_ARG_MX_SHAPE(*left), DIAG_ARG_MX_SHAPE(*right));
@@ -368,7 +303,7 @@ MxShape* TypeCheck(ASTNode* node)
 				return nullptr;
 			}
 		case TokenToPower:
-			if (right->Height != 1 || right->Width != 1) {
+			if (right->Height != 1 || right->Width != 1 || left->Height != left->Width) {
 				DIAG_EMIT0(DiagMxLiteralInvalidPower, node->Binary.Right->Loc);
 				return nullptr;
 			}
@@ -401,7 +336,12 @@ MxShape* TypeCheck(ASTNode* node)
 		return shape;
 	}
 	case ASTNodeIfStmt: {
-		TypeCheck(node->IfStmt.Condition);
+		MxShape* condShape = TypeCheck(node->IfStmt.Condition);
+		if (!condShape) {
+			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->IfStmt.Condition->Loc);
+			return nullptr;
+		}
+
 		TypeCheck(node->IfStmt.ThenBlock);
 
 		if (node->IfStmt.ElseBlock) {
@@ -411,7 +351,12 @@ MxShape* TypeCheck(ASTNode* node)
 		return nullptr;
 	}
 	case ASTNodeWhileStmt: {
-		TypeCheck(node->WhileStmt.Condition);
+		MxShape* condShape = TypeCheck(node->WhileStmt.Condition);
+		if (!condShape) {
+			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->WhileStmt.Condition->Loc);
+			return nullptr;
+		}
+
 		TypeCheck(node->WhileStmt.Body);
 
 		return nullptr;
@@ -527,7 +472,11 @@ MxShape* TypeCheck(ASTNode* node)
 	case ASTNodeFunctionCall: {
 		if (node->FunctionCall.Identifier.SymbolLength == 7 && memcmp(node->FunctionCall.Identifier.Symbol, "display", 7) == 0) {
 			for (usz i = 0; i < node->FunctionCall.ArgCount; ++i) {
-				TypeCheck(node->FunctionCall.CallArgs[i]);
+				MxShape* argShape = TypeCheck(node->FunctionCall.CallArgs[i]);
+				if (!argShape) {
+					DIAG_EMIT0(DiagExprDoesNotReturnValue, node->FunctionCall.CallArgs[i]->Loc);
+					return nullptr;
+				}
 			}
 
 			return nullptr;
@@ -551,10 +500,7 @@ MxShape* TypeCheck(ASTNode* node)
 			}
 
 			MxShape* shape;
-			result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-			if (result) {
-				return nullptr;
-			}
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
 
 			shape->Height = size;
 			shape->Width = size;
@@ -591,10 +537,7 @@ MxShape* TypeCheck(ASTNode* node)
 			}
 
 			MxShape* shape;
-			result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-			if (result) {
-				return nullptr;
-			}
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
 
 			shape->Height = height;
 			shape->Width = width;
@@ -625,10 +568,7 @@ MxShape* TypeCheck(ASTNode* node)
 			}
 
 			MxShape* shape;
-			result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-			if (result) {
-				return nullptr;
-			}
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
 
 			shape->Height = height;
 			shape->Width = width;
@@ -657,10 +597,7 @@ MxShape* TypeCheck(ASTNode* node)
 			MxShape* argShape = TypeCheck(node->FunctionCall.CallArgs[0]);
 
 			MxShape* shape;
-			Result result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-			if (result) {
-				return nullptr;
-			}
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
 
 			shape->Height = argShape->Height;
 			shape->Width = argShape->Width;
@@ -687,10 +624,7 @@ MxShape* TypeCheck(ASTNode* node)
 			MxShape* argShape = TypeCheck(node->FunctionCall.CallArgs[1]);
 
 			MxShape* shape;
-			Result result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-			if (result) {
-				return nullptr;
-			}
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
 
 			shape->Height = argShape->Height;
 			shape->Width = argShape->Width;
@@ -702,10 +636,7 @@ MxShape* TypeCheck(ASTNode* node)
 	}
 	case ASTNodeIdentifier: {
 		MxShape* shape;
-		Result result = StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape);
-		if (result) {
-			return nullptr;
-		}
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
 
 		usz id = node->Identifier.ID;
 		MxShape* varShape = &g_typeChecker.TypeCheckingTable[id].Shape;
@@ -742,39 +673,29 @@ MxShape* TypeCheck(ASTNode* node)
 	}
 }
 
-Result TypeCheckerInit()
+void TypeCheckerInit()
 {
-	Result result = DynArenaInit(&g_typeChecker.BindingArena);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(DynArenaInit(&g_typeChecker.BindingArena));
 
 	g_typeChecker.TypeCheckingTable = calloc(128, sizeof(MxShape));
 	if (!g_typeChecker.TypeCheckingTable) {
-		return ResErr;
+		DIAG_PANIC_ON_ERR(ResErr);
 	}
 
-	result = StatArenaInit(&g_typeChecker.ShapeArena, sizeof(MxShape));
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(StatArenaInit(&g_typeChecker.ShapeArena, sizeof(MxShape)));
 
 	g_typeChecker.CurBindingScope = nullptr;
-	return ResOk;
 }
 
-Result TypeCheckerSymbolBind() { return SymbolBind((ASTNode*)g_parser.ASTArena.Blocks->Data); }
+void TypeCheckerSymbolBind() { SymbolBind((ASTNode*)g_parser.ASTArena.Blocks->Data); }
 
 void TypeCheckerTypeCheck() { TypeCheck((ASTNode*)g_parser.ASTArena.Blocks->Data); }
 
-Result TypeCheckerDeinit()
+void TypeCheckerDeinit()
 {
 	free(g_typeChecker.TypeCheckingTable);
 
-	Result result = StatArenaDeinit(&g_typeChecker.ShapeArena);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(StatArenaDeinit(&g_typeChecker.ShapeArena));
 
-	return DynArenaDeinit(&g_typeChecker.BindingArena);
+	DIAG_PANIC_ON_ERR(DynArenaDeinit(&g_typeChecker.BindingArena));
 }

@@ -41,7 +41,7 @@ static void StatArenaBlockFreeChain(StatArenaBlock* block)
 
 Result StatArenaInit(StatArena* arena, usz itemSizeBytes)
 {
-	if (!arena || itemSizeBytes > 128) {
+	if (!arena || itemSizeBytes > 256) {
 		return ResInvalidParams;
 	}
 

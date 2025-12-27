@@ -33,17 +33,11 @@ int main(int argc, char* argv[])
 		return 1;
 	}
 
-	if (ParserInit()) {
-		return 1;
-	}
+	ParserInit();
 
-	if (TypeCheckerInit()) {
-		return 1;
-	}
+	TypeCheckerInit();
 
-	if (ParserParse()) {
-		return 1;
-	}
+	ParserParse();
 
 	usz errCount = DiagReport();
 	if (errCount == 0) { }
@@ -53,9 +47,7 @@ int main(int argc, char* argv[])
 	ParserPrintAST((ASTNode*)g_parser.ASTArena.Blocks->Data, 0);
 	printf("\n\n");
 
-	if (TypeCheckerSymbolBind()) {
-		return 1;
-	}
+	TypeCheckerSymbolBind();
 
 	errCount += DiagReport();
 	if (errCount == 0) { }
@@ -71,13 +63,9 @@ int main(int argc, char* argv[])
 		printf("Type checked!\n\n");
 	}
 
-	if (TypeCheckerDeinit()) {
-		return 1;
-	}
+	TypeCheckerDeinit();
 
-	if (InterpreterInit()) {
-		return 1;
-	}
+	InterpreterInit();
 
 	if (errCount == 0) {
 		InterpreterInterpret();
@@ -88,13 +76,9 @@ int main(int argc, char* argv[])
 		printf("Interpreted!\n\n");
 	}
 
-	if (InterpreterDeinit()) {
-		return 1;
-	}
+	InterpreterDeinit();
 
-	if (ParserDeinit()) {
-		return 1;
-	}
+	ParserDeinit();
 
 	if (TokenizerDeinit()) {
 		return 1;

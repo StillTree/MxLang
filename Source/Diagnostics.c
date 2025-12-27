@@ -5,6 +5,8 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 DiagState g_diagState = { 0 };
 
@@ -33,7 +35,8 @@ static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelErro
 	= { DiagLevelError, "Matrices of shapes %0 and %1 cannot be divided together. Consider multiplication by the inverse matrix" },
 	[DiagMxLiteralShapesDifferComp] = { DiagLevelError, "Matrices of shapes %0 and %1 cannot be compared together" },
 	[DiagMxLiteralShapesDifferAssign] = { DiagLevelError, "Assigning a matrix of shape %0 to a variable of shape %1" },
-	[DiagMxLiteralInvalidPower] = { DiagLevelError, "A matrix can only be raised to a power of a natural number" },
+	[DiagMxLiteralInvalidPower]
+	= { DiagLevelError, "Matrix exponentiation requires a square matrix and a positive natural-number exponent" },
 	[DiagUninitializedUntypedVar] = { DiagLevelError, "Variable %0 must have either a type declaration or an initialization expression" },
 	[DiagUninitializedConstVar] = { DiagLevelError, "A const variable %0 must have an initialization expression" },
 	[DiagAssignToConstVar] = { DiagLevelError, "Assignment to a constant variable" },
@@ -47,6 +50,9 @@ static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelErro
 	[DiagLogInvalidBase] = { DiagLevelError, "Logarithm base %0 must be greater than 0 and not equal to 1" },
 	[DiagLogInvalidArg] = { DiagLevelError, "Logarithm argument %0 must be greater than 0" },
 	[DiagSqrtInvalidArg] = { DiagLevelError, "Square root argument %0 must be greater than or equal to 0" },
+	[DiagDivisionByZero] = { DiagLevelError, "Division by 0" },
+	[DiagPoweringToNonInt] = { DiagLevelError, "A matrix can only be raised to a power of a positive integer. Here: %0" },
+	[DiagInternalError] = { DiagLevelError, "Unrecoverable internal error occured in file %0 on line %1: %2" },
 	[DiagUnusedExpressionResult] = { DiagLevelWarning, "Unused expression result" },
 	[DiagEmptyFileParsed] = { DiagLevelNote, "Empty file parsed" } };
 
@@ -60,6 +66,36 @@ static usz NumberWidth(usz num)
 	}
 
 	return width;
+}
+
+static void PrintResult(Result result, FILE* out)
+{
+	switch (result) {
+	case ResUnimplemented:
+		fprintf(out, "ResUnimplemented");
+		break;
+	case ResCouldNotOpenFile:
+		fprintf(out, "ResCouldNotOpenFile");
+		break;
+	case ResOutOfMemory:
+		fprintf(out, "ResOutOfMemory");
+		break;
+	case ResNotFound:
+		fprintf(out, "ResNotFound");
+		break;
+	case ResInvalidParams:
+		fprintf(out, "ResInvalidParams");
+		break;
+	case ResEndOfIteration:
+		fprintf(out, "ResEndOfIteration");
+		break;
+	case ResErr:
+		fprintf(out, "ResErr");
+		break;
+	default:
+		fprintf(out, "ResultUnknown");
+		break;
+	}
 }
 
 static void PrintTokenType(TokenType tokenType, FILE* out)
@@ -216,6 +252,9 @@ static void PrintDiagFormat(FILE* out, const char* format, const Diag* diag)
 			case DiagArgNumber:
 				fprintf(out, "'%lf'", diag->Args[i].Number);
 				break;
+			case DiagArgResult:
+				PrintResult(diag->Args[i].Result, out);
+				break;
 			}
 
 			++iter;
@@ -309,27 +348,37 @@ void DiagEmit(DiagType type, SourceLoc loc, const DiagArg* args, usz argCount)
 	}
 }
 
+[[noreturn]] void DiagPanic(Result result, const char* fileName, i32 lineNumber)
+{
+	SymbolView symbolView = { .Symbol = fileName, .SymbolLength = strlen(fileName) };
+	DIAG_EMIT(DiagInternalError, ((SourceLoc) { .Line = 1, .LinePos = 1 }), DIAG_ARG_RESULT(result), DIAG_ARG_SYMBOL_VIEW(symbolView),
+		DIAG_ARG_NUMBER(lineNumber));
+
+	DiagReport();
+
+	exit(1);
+}
+
 usz DiagReport()
 {
-	usz count = 0;
+	usz errCount = 0;
 	StatArenaIter iter = { 0 };
 	while (StatArenaIterNext(&g_diagState.Arena, &iter) == ResOk) {
-		DiagPrint(iter.Item);
+		Diag* diag = iter.Item;
 
-		++count;
+		DiagPrint(diag);
+
+		const DiagInfo* info = DIAG_TYPE_INFO + diag->Type;
+		if (info->Level == DiagLevelError) {
+			++errCount;
+		}
 	}
 
 	assert(StatArenaMarkUndo(&g_diagState.Arena, &g_diagState.Mark) == ResOk);
 
 	assert(StatArenaMarkSet(&g_diagState.Arena, &g_diagState.Mark) == ResOk);
 
-	if (count > 1) {
-		printf("Stopping now, %zu errors emitted\n", count);
-	} else if (count > 0) {
-		printf("Stopping now, %zu error emitted\n", count);
-	}
-
-	return count;
+	return errCount;
 }
 
 Result DiagDeinit() { return StatArenaDeinit(&g_diagState.Arena); }

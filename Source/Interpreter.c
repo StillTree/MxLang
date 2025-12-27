@@ -9,23 +9,29 @@
 
 Interpreter g_interpreter = { 0 };
 
-Result InterpreterInit()
+void InterpreterInit()
 {
 	g_interpreter.VarTable = (Mx**)calloc(128, sizeof(Mx*));
 	if (!g_interpreter.VarTable) {
-		return ResErr;
+		DIAG_PANIC_ON_ERR(ResErr);
 	}
 
-	return DynArenaInit(&g_interpreter.MxArena);
+	DIAG_PANIC_ON_ERR(DynArenaInit(&g_interpreter.MxArena));
+}
+
+[[noreturn]] static void Panic()
+{
+	DiagReport();
+
+	fprintf(stderr, "Runtime error(s) emitted. Stopping now\n");
+
+	exit(1);
 }
 
 Mx* InterpreterAllocMx(usz height, usz width)
 {
 	Mx* mx;
-	Result result = DynArenaAlloc(&g_interpreter.MxArena, (void**)&mx, sizeof(Mx) + (height * width * sizeof(double)));
-	if (result) {
-		// TODO: Panic!
-	}
+	DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_interpreter.MxArena, (void**)&mx, sizeof(Mx) + (height * width * sizeof(double))));
 
 	mx->Shape.Height = height;
 	mx->Shape.Width = width;
@@ -57,27 +63,16 @@ Mx* InterpreterEval(ASTNode* node)
 
 		switch (node->Unary.Operator) {
 		case TokenSubtract: {
-			Result result = MxNegate(operand, operand);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
-
+			MxNegate(operand, operand);
 			return operand;
 		}
 		case TokenTranspose: {
 			Mx* mx = InterpreterAllocMx(operand->Shape.Width, operand->Shape.Height);
-			Result result = MxTranspose(operand, mx);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
-
+			MxTranspose(operand, mx);
 			return mx;
 		}
 		default:
-			// TODO: Panic!
-			return nullptr;
+			DIAG_PANIC_ON_ERR(ResErr);
 		}
 	}
 	case ASTNodeGrouping:
@@ -92,17 +87,11 @@ Mx* InterpreterEval(ASTNode* node)
 
 			if (left->Shape.Height == 1 && left->Shape.Width == 1) {
 				mx = InterpreterAllocMx(right->Shape.Height, right->Shape.Width);
-			} else if (right->Shape.Height == 1 && right->Shape.Width == 1) {
-				mx = InterpreterAllocMx(left->Shape.Height, left->Shape.Width);
 			} else {
 				mx = InterpreterAllocMx(left->Shape.Height, left->Shape.Width);
 			}
 
-			Result result = MxAdd(left, right, mx);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
+			MxAdd(left, right, mx);
 			return mx;
 		}
 		case TokenSubtract: {
@@ -110,17 +99,11 @@ Mx* InterpreterEval(ASTNode* node)
 
 			if (left->Shape.Height == 1 && left->Shape.Width == 1) {
 				mx = InterpreterAllocMx(right->Shape.Height, right->Shape.Width);
-			} else if (right->Shape.Height == 1 && right->Shape.Width == 1) {
-				mx = InterpreterAllocMx(left->Shape.Height, left->Shape.Width);
 			} else {
 				mx = InterpreterAllocMx(left->Shape.Height, left->Shape.Width);
 			}
 
-			Result result = MxSubtract(left, right, mx);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
+			MxSubtract(left, right, mx);
 			return mx;
 		}
 		case TokenMultiply: {
@@ -134,11 +117,7 @@ Mx* InterpreterEval(ASTNode* node)
 				mx = InterpreterAllocMx(left->Shape.Height, right->Shape.Width);
 			}
 
-			Result result = MxMultiply(left, right, mx);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
+			MxMultiply(left, right, mx);
 			return mx;
 		}
 		case TokenDivide: {
@@ -152,8 +131,8 @@ Mx* InterpreterEval(ASTNode* node)
 
 			Result result = MxDivide(left, right, mx);
 			if (result) {
-				// TODO: Panic!
-				return nullptr;
+				DIAG_EMIT0(DiagDivisionByZero, node->Binary.Right->Loc);
+				Panic();
 			}
 			return mx;
 		}
@@ -161,63 +140,39 @@ Mx* InterpreterEval(ASTNode* node)
 			Mx* mx = InterpreterAllocMx(left->Shape.Height, left->Shape.Width);
 			Result result = MxToPower(left, right, mx);
 			if (result) {
-				// TODO: Panic!
-				return nullptr;
+				DIAG_EMIT(DiagPoweringToNonInt, node->Binary.Right->Loc, DIAG_ARG_NUMBER(right->Data[0]));
+				Panic();
 			}
 			return mx;
 		}
 		case TokenGreater: {
 			Mx* mx = InterpreterAllocMx(1, 1);
-			Result result = MxGreater(left, right, mx);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
+			MxGreater(left, right, mx);
 			return mx;
 		}
 		case TokenGreaterEqual: {
 			Mx* mx = InterpreterAllocMx(1, 1);
-			Result result = MxGreaterEqual(left, right, mx);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
+			MxGreaterEqual(left, right, mx);
 			return mx;
 		}
 		case TokenLess: {
 			Mx* mx = InterpreterAllocMx(1, 1);
-			Result result = MxLess(left, right, mx);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
+			MxLess(left, right, mx);
 			return mx;
 		}
 		case TokenLessEqual: {
 			Mx* mx = InterpreterAllocMx(1, 1);
-			Result result = MxLessEqual(left, right, mx);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
+			MxLessEqual(left, right, mx);
 			return mx;
 		}
 		case TokenEqualEqual: {
 			Mx* mx = InterpreterAllocMx(1, 1);
-			Result result = MxEqualEqual(left, right, mx);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
+			MxEqualEqual(left, right, mx);
 			return mx;
 		}
 		case TokenNotEqual: {
 			Mx* mx = InterpreterAllocMx(1, 1);
-			Result result = MxNotEqual(left, right, mx);
-			if (result) {
-				// TODO: Panic!
-				return nullptr;
-			}
+			MxNotEqual(left, right, mx);
 			return mx;
 		}
 		case TokenOr: {
@@ -231,8 +186,7 @@ Mx* InterpreterEval(ASTNode* node)
 			return mx;
 		}
 		default:
-			// TODO: Panic!
-			return nullptr;
+			DIAG_PANIC_ON_ERR(ResErr);
 		}
 	}
 	case ASTNodeBlock: {
@@ -244,10 +198,6 @@ Mx* InterpreterEval(ASTNode* node)
 	}
 	case ASTNodeIfStmt: {
 		Mx* cond = InterpreterEval(node->IfStmt.Condition);
-		if (!cond) {
-			// TODO: Panic!
-			return nullptr;
-		}
 
 		if (MxTruthy(cond)) {
 			InterpreterEval(node->IfStmt.ThenBlock);
@@ -260,10 +210,6 @@ Mx* InterpreterEval(ASTNode* node)
 	case ASTNodeWhileStmt: {
 		while (true) {
 			Mx* cond = InterpreterEval(node->WhileStmt.Condition);
-			if (!cond) {
-				// TODO: Panic!
-				return nullptr;
-			}
 
 			if (!MxTruthy(cond)) {
 				break;
@@ -281,10 +227,6 @@ Mx* InterpreterEval(ASTNode* node)
 
 		if (node->VarDecl.Expression) {
 			Mx* initExpr = InterpreterEval(node->VarDecl.Expression);
-			if (!initExpr) {
-				// TODO: Panic!
-				return nullptr;
-			}
 
 			for (usz i = 0; i < node->VarDecl.Shape.Height * node->VarDecl.Shape.Width; ++i) {
 				g_interpreter.VarTable[id]->Data[i] = initExpr->Data[i];
@@ -295,10 +237,6 @@ Mx* InterpreterEval(ASTNode* node)
 	}
 	case ASTNodeAssignment: {
 		Mx* newVal = InterpreterEval(node->Assignment.Expression);
-		if (!newVal) {
-			// TODO: Panic!
-			return nullptr;
-		}
 
 		usz id = node->Assignment.ID;
 		Mx* var = g_interpreter.VarTable[id];
@@ -307,46 +245,34 @@ Mx* InterpreterEval(ASTNode* node)
 			memcpy(var->Data, newVal->Data, var->Shape.Height * var->Shape.Width * sizeof(f64));
 		} else {
 			Mx* mxI = InterpreterEval(node->Assignment.Index->IndexSuffix.I);
-			if (!mxI) {
-				// TODO: Panic!
-				return nullptr;
-			}
 
 			if (!IsF64Int(mxI->Data[0])) {
-				// TODO: Panic!
 				DIAG_EMIT(DiagIndexNotInteger, node->Assignment.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]));
-				return nullptr;
+				Panic();
 			}
 
 			usz i = (usz)mxI->Data[0];
 
 			if (i < 1 || i > var->Shape.Height) {
-				// TODO: Panic!
 				DIAG_EMIT(DiagIndexOutOfRange, node->Assignment.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]),
 					DIAG_ARG_MX_SHAPE(var->Shape));
-				return nullptr;
+				Panic();
 			}
 
 			if (node->Assignment.Index->IndexSuffix.J) {
 				Mx* mxJ = InterpreterEval(node->Assignment.Index->IndexSuffix.J);
-				if (!mxJ) {
-					// TODO: Panic!
-					return nullptr;
-				}
 
 				if (!IsF64Int(mxJ->Data[0])) {
-					// TODO: Panic!
 					DIAG_EMIT(DiagIndexNotInteger, node->Assignment.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]));
-					return nullptr;
+					Panic();
 				}
 
 				usz j = (usz)mxJ->Data[0];
 
 				if (j < 1 || j > var->Shape.Width) {
-					// TODO: Panic!
 					DIAG_EMIT(DiagIndexOutOfRange, node->Assignment.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]),
 						DIAG_ARG_MX_SHAPE(var->Shape));
-					return nullptr;
+					Panic();
 				}
 
 				var->Data[((i - 1) * var->Shape.Width) + j - 1] = newVal->Data[0];
@@ -422,46 +348,34 @@ Mx* InterpreterEval(ASTNode* node)
 
 		if (node->Identifier.Index) {
 			Mx* mxI = InterpreterEval(node->Identifier.Index->IndexSuffix.I);
-			if (!mxI) {
-				// TODO: Panic!
-				return nullptr;
-			}
 
 			if (!IsF64Int(mxI->Data[0])) {
-				// TODO: Panic!
 				DIAG_EMIT(DiagIndexNotInteger, node->Identifier.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]));
-				return nullptr;
+				Panic();
 			}
 
 			usz i = (usz)mxI->Data[0];
 
 			if (i < 1 || i > var->Shape.Height) {
-				// TODO: Panic!
 				DIAG_EMIT(DiagIndexOutOfRange, node->Identifier.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]),
 					DIAG_ARG_MX_SHAPE(var->Shape));
-				return nullptr;
+				Panic();
 			}
 
 			if (node->Identifier.Index->IndexSuffix.J) {
 				Mx* mxJ = InterpreterEval(node->Identifier.Index->IndexSuffix.J);
-				if (!mxJ) {
-					// TODO: Panic!
-					return nullptr;
-				}
 
 				if (!IsF64Int(mxJ->Data[0])) {
-					// TODO: Panic!
 					DIAG_EMIT(DiagIndexNotInteger, node->Identifier.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]));
-					return nullptr;
+					Panic();
 				}
 
 				usz j = (usz)mxJ->Data[0];
 
 				if (j < 1 || j > var->Shape.Width) {
-					// TODO: Panic!
 					DIAG_EMIT(DiagIndexOutOfRange, node->Identifier.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]),
 						DIAG_ARG_MX_SHAPE(var->Shape));
-					return nullptr;
+					Panic();
 				}
 
 				Mx* mx = InterpreterAllocMx(1, 1);
@@ -479,16 +393,15 @@ Mx* InterpreterEval(ASTNode* node)
 		return mx;
 	}
 	default:
-		// TODO: Panic!
-		return nullptr;
+		DiagPanic(ResErr, __FILE_NAME__, __LINE__);
 	}
 }
 
 void InterpreterInterpret() { InterpreterEval((ASTNode*)g_parser.ASTArena.Blocks->Data); }
 
-Result InterpreterDeinit()
+void InterpreterDeinit()
 {
 	free((void*)g_interpreter.VarTable);
 
-	return DynArenaDeinit(&g_interpreter.MxArena);
+	DIAG_PANIC_ON_ERR(DynArenaDeinit(&g_interpreter.MxArena));
 }

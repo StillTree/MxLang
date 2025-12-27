@@ -106,9 +106,9 @@ typedef struct Parser {
 	DynArena ArraysArena;
 } Parser;
 
-Result ParserInit();
-Result ParserParse();
+void ParserInit();
+void ParserParse();
 void ParserPrintAST(const ASTNode* node, usz indents);
-Result ParserDeinit();
+void ParserDeinit();
 
 extern Parser g_parser;

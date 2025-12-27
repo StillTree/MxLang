@@ -1,5 +1,6 @@
 #include "Tokenizer.h"
 
+#include "Diagnostics.h"
 #include "SourceManager.h"
 #include <ctype.h>
 #include <math.h>
@@ -190,32 +191,29 @@ static void TokenizerSkipWhiteSpace()
 	}
 }
 
-Result TokenizerPeekToken(Token** token)
+Token* TokenizerPeekToken()
 {
 	if (!g_tokenizer.HasLookahead) {
-		Result result = TokenizerNextToken(token);
+		Token* token = TokenizerNextToken();
 		g_tokenizer.HasLookahead = true;
-		return result;
+		return token;
 	}
 
-	*token = &g_tokenizer.LastReturnedToken;
-	return ResOk;
+	return &g_tokenizer.LastReturnedToken;
 }
 
-Result TokenizerNextToken(Token** token)
+Token* TokenizerNextToken()
 {
 	if (g_tokenizer.HasLookahead) {
-		*token = &g_tokenizer.LastReturnedToken;
 		g_tokenizer.HasLookahead = false;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	}
 
 	TokenizerSkipWhiteSpace();
 
 	if (g_tokenizer.LexemeCurrent >= g_tokenizer.SourceEnd) {
 		TokenizerAddToken(TokenEof, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	}
 
 	g_tokenizer.LexemeStart = g_tokenizer.LexemeCurrent;
@@ -225,20 +223,16 @@ Result TokenizerNextToken(Token** token)
 	switch (c) {
 	case '(':
 		TokenizerAddToken(TokenLeftRoundBracket, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case ')':
 		TokenizerAddToken(TokenRightRoundBracket, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '[':
 		TokenizerAddToken(TokenLeftSquareBracket, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case ']':
 		TokenizerAddToken(TokenRightSquareBracket, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '<':
 		if (TokenizerMatch('=')) {
 			TokenizerAddToken(TokenLessEqual, nullptr, 0, nullptr);
@@ -247,8 +241,7 @@ Result TokenizerNextToken(Token** token)
 		} else {
 			TokenizerAddToken(TokenLess, nullptr, 0, nullptr);
 		}
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '>':
 		if (TokenizerMatch('=')) {
 			TokenizerAddToken(TokenGreaterEqual, nullptr, 0, nullptr);
@@ -257,64 +250,51 @@ Result TokenizerNextToken(Token** token)
 		} else {
 			TokenizerAddToken(TokenGreater, nullptr, 0, nullptr);
 		}
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '{':
 		TokenizerAddToken(TokenLeftCurlyBracket, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '}':
 		TokenizerAddToken(TokenRightCurlyBracket, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case ',':
 		TokenizerAddToken(TokenComma, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '+':
 		TokenizerAddToken(TokenAdd, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '-':
 		TokenizerAddToken(TokenSubtract, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '*':
 		TokenizerAddToken(TokenMultiply, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '/':
 		TokenizerAddToken(TokenDivide, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '^':
 		TokenizerAddToken(TokenToPower, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '\'':
 		TokenizerAddToken(TokenTranspose, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case ':':
 		TokenizerAddToken(TokenColon, nullptr, 0, nullptr);
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '=':
 		if (TokenizerMatch('=')) {
 			TokenizerAddToken(TokenEqualEqual, nullptr, 0, nullptr);
 		} else {
 			TokenizerAddToken(TokenEqual, nullptr, 0, nullptr);
 		}
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	case '!':
 		if (TokenizerMatch('=')) {
 			TokenizerAddToken(TokenNotEqual, nullptr, 0, nullptr);
 		} else {
 			TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
 		}
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	default:
 		if (isdigit(c)) {
 			while (isdigit(TokenizerPeek(0))) {
@@ -324,16 +304,14 @@ Result TokenizerNextToken(Token** token)
 			if (TokenizerMatch('x')) {
 				if (!isdigit(TokenizerPeek(0))) {
 					TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
-					*token = &g_tokenizer.LastReturnedToken;
-					return ResOk;
+					return &g_tokenizer.LastReturnedToken;
 				}
 
 				TokenizerSkipDigit();
 
 				if (isalpha(TokenizerPeek(0))) {
 					TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
-					*token = &g_tokenizer.LastReturnedToken;
-					return ResOk;
+					return &g_tokenizer.LastReturnedToken;
 				}
 
 				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
@@ -342,30 +320,26 @@ Result TokenizerNextToken(Token** token)
 			} else if (TokenizerMatch('.')) {
 				if (!isdigit(TokenizerPeek(0))) {
 					TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
-					*token = &g_tokenizer.LastReturnedToken;
-					return ResOk;
+					return &g_tokenizer.LastReturnedToken;
 				}
 
 				TokenizerSkipDigit();
 
 				if (isalpha(TokenizerPeek(0))) {
 					TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
-					*token = &g_tokenizer.LastReturnedToken;
-					return ResOk;
+					return &g_tokenizer.LastReturnedToken;
 				}
 
 				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
 				TokenizerAddToken(TokenNumber, nullptr, ParseDouble(g_tokenizer.LexemeStart, lexemeLength), nullptr);
 			} else if (isalpha(TokenizerPeek(0))) {
 				TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
-				*token = &g_tokenizer.LastReturnedToken;
-				return ResOk;
+				return &g_tokenizer.LastReturnedToken;
 			} else {
 				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
 				TokenizerAddToken(TokenNumber, nullptr, ParseDouble(g_tokenizer.LexemeStart, lexemeLength), nullptr);
 			}
-			*token = &g_tokenizer.LastReturnedToken;
-			return ResOk;
+			return &g_tokenizer.LastReturnedToken;
 		} else if (isalpha(c)) {
 			TokenizerSkipAlphanumeric();
 
@@ -387,18 +361,14 @@ Result TokenizerNextToken(Token** token)
 				TokenizerAddToken(TokenOr, nullptr, 0, nullptr);
 			} else {
 				SymbolView lexeme;
-				Result result = SymbolTableAdd(&g_tokenizer.TableIdentifiers, g_tokenizer.LexemeStart, lexemeLength, &lexeme);
-				if (result) {
-					return result;
-				}
+				DIAG_PANIC_ON_ERR(SymbolTableAdd(&g_tokenizer.TableIdentifiers, g_tokenizer.LexemeStart, lexemeLength, &lexeme));
 				TokenizerAddToken(TokenIdentifier, &lexeme, 0, nullptr);
 			}
 		} else {
 			TokenizerAddToken((TokenType)c, nullptr, 0, nullptr);
 		}
 
-		*token = &g_tokenizer.LastReturnedToken;
-		return ResOk;
+		return &g_tokenizer.LastReturnedToken;
 	}
 }
 

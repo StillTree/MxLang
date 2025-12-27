@@ -3,7 +3,6 @@
 #include "MxShape.h"
 #include "Memory/DynArena.h"
 #include "Memory/StatArena.h"
-#include "Result.h"
 
 typedef struct TypeCheckingEntry {
 	MxShape Shape;
@@ -28,9 +27,9 @@ typedef struct TypeChecker {
 	StatArena ShapeArena;
 } TypeChecker;
 
-Result TypeCheckerInit();
-Result TypeCheckerSymbolBind();
+void TypeCheckerInit();
+void TypeCheckerSymbolBind();
 void TypeCheckerTypeCheck();
-Result TypeCheckerDeinit();
+void TypeCheckerDeinit();
 
 extern TypeChecker g_typeChecker;
