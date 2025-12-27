@@ -15,80 +15,61 @@ int main(int argc, char* argv[])
 	printf("MxLang v" MX_VERSION "\n\n");
 
 	if (argc < 2) {
-		// TODO: Report errors meaningfully
+		fprintf(stderr, "A 'fileName' argument is required\n");
 		return 1;
 	}
 
-	if (SourceInit(argv[1])) {
-		return 1;
+	if (argc > 2) {
+		printf("Ignoring redundant arguments. Pwovided %d too many\n", argc - 2);
 	}
-
-	printf("File contents:\n%.*s\n", (u32)g_source.SourceLength, g_source.Source);
 
 	if (DiagInit()) {
+		fprintf(stderr, "An unrecoverable internal error occured while initializing diagnostic support\n");
 		return 1;
 	}
 
-	if (TokenizerInit()) {
-		return 1;
-	}
+	SourceInit(argv[1]);
+
+	TokenizerInit();
 
 	ParserInit();
-
-	TypeCheckerInit();
 
 	ParserParse();
 
 	usz errCount = DiagReport();
-	if (errCount == 0) { }
 
-	printf("Parsed!\n\n");
-
-	ParserPrintAST((ASTNode*)g_parser.ASTArena.Blocks->Data, 0);
-	printf("\n\n");
+	TypeCheckerInit();
 
 	TypeCheckerSymbolBind();
 
 	errCount += DiagReport();
-	if (errCount == 0) { }
 
-	printf("Bound symbols!\n\n");
+	TypeCheckerTypeCheck();
 
-	if (errCount == 0) {
-		TypeCheckerTypeCheck();
-
-		errCount += DiagReport();
-		if (errCount == 0) { }
-
-		printf("Type checked!\n\n");
-	}
+	errCount += DiagReport();
 
 	TypeCheckerDeinit();
 
-	InterpreterInit();
+	if (errCount <= 0) {
+		InterpreterInit();
 
-	if (errCount == 0) {
 		InterpreterInterpret();
 
-		errCount += DiagReport();
-		if (errCount == 0) { }
-
-		printf("Interpreted!\n\n");
+		InterpreterDeinit();
+	} else {
+		fprintf(stderr, "Error(s) emitted. Stopping now\n");
 	}
-
-	InterpreterDeinit();
 
 	ParserDeinit();
 
-	if (TokenizerDeinit()) {
-		return 1;
-	}
-
-	if (DiagDeinit()) {
-		return 1;
-	}
+	TokenizerDeinit();
 
 	SourceDeinit();
+
+	if (DiagDeinit()) {
+		fprintf(stderr, "An unrecoverable internal error occured while deinitializing diagnostic support\n");
+		return 1;
+	}
 
 	return 0;
 }

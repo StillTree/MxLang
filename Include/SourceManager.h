@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Types.h"
-#include "Result.h"
 
 typedef struct Source {
 	const char* FileName;
@@ -11,7 +10,7 @@ typedef struct Source {
 	usz LineCount;
 } Source;
 
-Result SourceInit(const char* name);
+void SourceInit(const char* name);
 void SourceDeinit();
 
 extern Source g_source;

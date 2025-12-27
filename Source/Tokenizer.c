@@ -143,12 +143,9 @@ inline static void TokenizerSkipAlphanumeric()
 	}
 }
 
-Result TokenizerInit()
+void TokenizerInit()
 {
-	Result result = SymbolTableInit(&g_tokenizer.TableIdentifiers);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(SymbolTableInit(&g_tokenizer.TableIdentifiers));
 
 	g_tokenizer.SourceEnd = g_source.Source + g_source.SourceLength;
 	g_tokenizer.SourceLine = 1;
@@ -157,8 +154,6 @@ Result TokenizerInit()
 	g_tokenizer.LexemeCurrent = g_source.Source;
 
 	g_source.Lines[0] = g_source.Source;
-
-	return ResOk;
 }
 
 static void TokenizerSkipWhiteSpace()
@@ -372,4 +367,7 @@ Token* TokenizerNextToken()
 	}
 }
 
-Result TokenizerDeinit() { return SymbolTableDeinit(&g_tokenizer.TableIdentifiers); }
+void TokenizerDeinit()
+{
+	DIAG_PANIC_ON_ERR(SymbolTableDeinit(&g_tokenizer.TableIdentifiers));
+}

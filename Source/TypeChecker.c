@@ -210,7 +210,10 @@ MxShape* TypeCheck(ASTNode* node)
 			MxShape* mx = TypeCheck(node->MxLiteral.Matrix[i]);
 
 			if (!mx) {
-				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->MxLiteral.Matrix[i]->Loc);
+				if (node->MxLiteral.Matrix[i]) {
+					DIAG_EMIT0(DiagExprDoesNotReturnValue, node->MxLiteral.Matrix[i]->Loc);
+				}
+
 				return nullptr;
 			}
 
@@ -228,7 +231,10 @@ MxShape* TypeCheck(ASTNode* node)
 
 		MxShape* operand = TypeCheck(node->Unary.Operand);
 		if (!operand) {
-			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Unary.Operand->Loc);
+			if (node->Unary.Operand) {
+				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Unary.Operand->Loc);
+			}
+
 			return nullptr;
 		}
 
@@ -253,13 +259,19 @@ MxShape* TypeCheck(ASTNode* node)
 
 		MxShape* left = TypeCheck(node->Binary.Left);
 		if (!left) {
-			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Binary.Left->Loc);
+			if (node->Binary.Left) {
+				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Binary.Left->Loc);
+			}
+
 			return nullptr;
 		}
 
 		MxShape* right = TypeCheck(node->Binary.Right);
 		if (!right) {
-			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Binary.Right->Loc);
+			if (node->Binary.Right) {
+				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Binary.Right->Loc);
+			}
+
 			return nullptr;
 		}
 
@@ -303,8 +315,11 @@ MxShape* TypeCheck(ASTNode* node)
 				return nullptr;
 			}
 		case TokenToPower:
-			if (right->Height != 1 || right->Width != 1 || left->Height != left->Width) {
+			if (right->Height != 1 || right->Width != 1) {
 				DIAG_EMIT0(DiagMxLiteralInvalidPower, node->Binary.Right->Loc);
+				return nullptr;
+			} else if (left->Height != left->Width) {
+				DIAG_EMIT0(DiagMxLiteralInvalidPowerBase, node->Binary.Left->Loc);
 				return nullptr;
 			}
 
@@ -338,7 +353,10 @@ MxShape* TypeCheck(ASTNode* node)
 	case ASTNodeIfStmt: {
 		MxShape* condShape = TypeCheck(node->IfStmt.Condition);
 		if (!condShape) {
-			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->IfStmt.Condition->Loc);
+			if (node->IfStmt.Condition) {
+				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->IfStmt.Condition->Loc);
+			}
+
 			return nullptr;
 		}
 
@@ -353,7 +371,10 @@ MxShape* TypeCheck(ASTNode* node)
 	case ASTNodeWhileStmt: {
 		MxShape* condShape = TypeCheck(node->WhileStmt.Condition);
 		if (!condShape) {
-			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->WhileStmt.Condition->Loc);
+			if (node->WhileStmt.Condition) {
+				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->WhileStmt.Condition->Loc);
+			}
+
 			return nullptr;
 		}
 
@@ -365,8 +386,11 @@ MxShape* TypeCheck(ASTNode* node)
 		usz id = node->VarDecl.ID;
 		MxShape* initShape = TypeCheck(node->VarDecl.Expression);
 
-		if (node->VarDecl.Expression && !initShape) {
-			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->VarDecl.Expression->Loc);
+		if (!initShape) {
+			if (node->VarDecl.Expression) {
+				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->VarDecl.Expression->Loc);
+			}
+
 			return nullptr;
 		}
 
@@ -415,7 +439,10 @@ MxShape* TypeCheck(ASTNode* node)
 		MxShape* varShape = &g_typeChecker.TypeCheckingTable[id].Shape;
 
 		if (!assignShape) {
-			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Loc);
+			if (node->Assignment.Expression) {
+				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Assignment.Expression->Loc);
+			}
+
 			return nullptr;
 		}
 
@@ -428,7 +455,10 @@ MxShape* TypeCheck(ASTNode* node)
 		} else {
 			MxShape* mxI = TypeCheck(node->Assignment.Index->IndexSuffix.I);
 			if (!mxI) {
-				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Loc);
+				if (node->Assignment.Index->IndexSuffix.I) {
+					DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Assignment.Index->IndexSuffix.I->Loc);
+				}
+
 				return nullptr;
 			}
 
@@ -440,7 +470,10 @@ MxShape* TypeCheck(ASTNode* node)
 			if (node->Assignment.Index->IndexSuffix.J) {
 				MxShape* mxJ = TypeCheck(node->Assignment.Index->IndexSuffix.J);
 				if (!mxJ) {
-					DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Loc);
+					if (node->Assignment.Index->IndexSuffix.J) {
+						DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Assignment.Index->IndexSuffix.J->Loc);
+					}
+
 					return nullptr;
 				}
 
@@ -474,7 +507,10 @@ MxShape* TypeCheck(ASTNode* node)
 			for (usz i = 0; i < node->FunctionCall.ArgCount; ++i) {
 				MxShape* argShape = TypeCheck(node->FunctionCall.CallArgs[i]);
 				if (!argShape) {
-					DIAG_EMIT0(DiagExprDoesNotReturnValue, node->FunctionCall.CallArgs[i]->Loc);
+					if (node->FunctionCall.CallArgs[i]) {
+						DIAG_EMIT0(DiagExprDoesNotReturnValue, node->FunctionCall.CallArgs[i]->Loc);
+					}
+
 					return nullptr;
 				}
 			}

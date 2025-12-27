@@ -24,6 +24,7 @@ typedef enum DiagType {
 	DiagMxLiteralShapesDifferComp,
 	DiagMxLiteralShapesDifferAssign,
 	DiagMxLiteralInvalidPower,
+	DiagMxLiteralInvalidPowerBase,
 	DiagUninitializedUntypedVar,
 	DiagUninitializedConstVar,
 	DiagAssignToConstVar,
@@ -39,7 +40,6 @@ typedef enum DiagType {
 	DiagSqrtInvalidArg,
 	DiagDivisionByZero,
 	DiagPoweringToNonInt,
-	DiagInternalError,
 	DiagUnusedExpressionResult,
 	DiagEmptyFileParsed
 } DiagType;

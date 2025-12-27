@@ -67,10 +67,9 @@ typedef struct Tokenizer {
 	bool HasLookahead;
 } Tokenizer;
 
-Result TokenizerInit();
-Result TokenizerScan();
+void TokenizerInit();
 Token* TokenizerNextToken();
 Token* TokenizerPeekToken();
-Result TokenizerDeinit();
+void TokenizerDeinit();
 
 extern Tokenizer g_tokenizer;

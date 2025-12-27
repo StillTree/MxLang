@@ -393,7 +393,7 @@ Mx* InterpreterEval(ASTNode* node)
 		return mx;
 	}
 	default:
-		DiagPanic(ResErr, __FILE_NAME__, __LINE__);
+		Panic();
 	}
 }
 

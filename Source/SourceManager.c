@@ -1,5 +1,6 @@
 #include "SourceManager.h"
 
+#include "Diagnostics.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -40,12 +41,9 @@ static Result ReadEntireFile(const char* filePath, const char** contents, usz* l
 	return ResOk;
 }
 
-Result SourceInit(const char* name)
+void SourceInit(const char* name)
 {
-	Result result = ReadEntireFile(name, &g_source.Source, &g_source.SourceLength);
-	if (result) {
-		return result;
-	}
+	DIAG_PANIC_ON_ERR(ReadEntireFile(name, &g_source.Source, &g_source.SourceLength));
 
 	for (usz i = 0; i < g_source.SourceLength; ++i) {
 		if (g_source.Source[i] != '\n') {
@@ -60,8 +58,6 @@ Result SourceInit(const char* name)
 
 	g_source.Lines = (const char**)calloc(g_source.LineCount, sizeof(const char*));
 	g_source.FileName = name;
-
-	return ResOk;
 }
 
 void SourceDeinit()
