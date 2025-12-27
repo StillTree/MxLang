@@ -72,6 +72,16 @@ static Result SymbolBind(ASTNode* node)
 	}
 
 	switch (node->Type) {
+	case ASTNodeMxLiteral: {
+		for (usz i = 0; i < node->MxLiteral.Shape.Height * node->MxLiteral.Shape.Width; ++i) {
+			Result result = SymbolBind(node->MxLiteral.Matrix[i]);
+			if (result) {
+				return result;
+			}
+		}
+
+		return ResOk;
+	}
 	case ASTNodeBlock: {
 		Result result = BindingEnterScope();
 		if (result) {
@@ -132,6 +142,14 @@ static Result SymbolBind(ASTNode* node)
 
 		printf("New ID: %.*s -> %zu\n", (i32)node->VarDecl.Identifier.SymbolLength, node->VarDecl.Identifier.Symbol, newID);
 		node->VarDecl.ID = newID;
+
+		if (node->VarDecl.Expression) {
+			result = SymbolBind(node->VarDecl.Expression);
+			if (result) {
+				return result;
+			}
+		}
+
 		return ResOk;
 	}
 	case ASTNodeAssignment: {
@@ -144,6 +162,13 @@ static Result SymbolBind(ASTNode* node)
 
 		printf("Bound ID: %.*s -> %zu\n", (i32)node->Assignment.Identifier.SymbolLength, node->Assignment.Identifier.Symbol, id);
 		node->Assignment.ID = id;
+
+		if (node->Assignment.Index) {
+			result = SymbolBind(node->Assignment.Index);
+			if (result) {
+				return result;
+			}
+		}
 
 		return SymbolBind(node->Assignment.Expression);
 	}
@@ -167,6 +192,29 @@ static Result SymbolBind(ASTNode* node)
 
 		printf("Bound ID: %.*s -> %zu\n", (i32)node->Identifier.Identifier.SymbolLength, node->Identifier.Identifier.Symbol, id);
 		node->Identifier.ID = id;
+
+		if (node->Identifier.Index) {
+			result = SymbolBind(node->Identifier.Index);
+			if (result) {
+				return result;
+			}
+		}
+
+		return ResOk;
+	}
+	case ASTNodeIndexSuffix: {
+		Result result = SymbolBind(node->IndexSuffix.I);
+		if (result) {
+			return result;
+		}
+
+		if (node->IndexSuffix.J) {
+			result = SymbolBind(node->IndexSuffix.J);
+			if (result) {
+				return result;
+			}
+		}
+
 		return ResOk;
 	}
 	default:
@@ -325,10 +373,22 @@ MxShape* TypeCheck(ASTNode* node)
 	case ASTNodeVarDecl: {
 		usz id = node->VarDecl.ID;
 		MxShape* initShape = TypeCheck(node->VarDecl.Expression);
-		MxShape* varShape = &node->VarDecl.Shape;
+		MxShape* varShape;
+		if (!node->VarDecl.HasDeclaredShape) {
+			if (!initShape) {
+				DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
+					DIAG_ARG_STRING("uninitialized untyped var"));
+				return nullptr;
+			}
+
+			varShape = initShape;
+		} else {
+			varShape = &node->VarDecl.Shape;
+		}
 
 		g_typeChecker.TypeCheckingTable[id].Shape = *varShape;
 		g_typeChecker.TypeCheckingTable[id].IsConst = node->VarDecl.IsConst;
+		node->VarDecl.Shape = *varShape;
 
 		if (node->VarDecl.IsConst && !initShape) {
 			DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
@@ -339,7 +399,7 @@ MxShape* TypeCheck(ASTNode* node)
 		if (initShape) {
 			if (varShape->Height != initShape->Height || varShape->Width != initShape->Width) {
 				DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
-					DIAG_ARG_STRING("uncompatible matrix shapes assign"));
+					DIAG_ARG_STRING("uncompatible matrix shapes assign decl"));
 				return nullptr;
 			}
 
@@ -390,6 +450,8 @@ MxShape* TypeCheck(ASTNode* node)
 						DIAG_ARG_STRING("uncompatible matrix shapes assign"));
 					return nullptr;
 				}
+
+				return nullptr;
 			}
 
 			MxShape* mxJ = TypeCheck(node->Assignment.Index->IndexSuffix.J);

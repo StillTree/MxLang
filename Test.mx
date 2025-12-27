@@ -1,6 +1,16 @@
-let i: dyn = 0
+let M: 3x3 = [1 2 3][4 5 6][7 8 9]
+let i = 1
 
-while i <= 10 {
-display(i)
-i = i + 0.5
+while i <= 3 {
+    let s = M[i 1] + M[i 2] + M[i 3]
+
+    if s != 0 {
+		M[i 1] = M[i 1] / s
+		M[i 2] = M[i 2] / s
+		M[i 3] = M[i 3] / s
+    }
+
+    i = i + 1
 }
+
+display(M)

@@ -944,10 +944,6 @@ static Result ParseVarDecl(ASTNode** node)
 		return result;
 	}
 
-	if (!varDecl->VarDecl.HasDeclaredShape && varDecl->VarDecl.Expression) {
-		varDecl->VarDecl.Shape = varDecl->VarDecl.Expression->MxLiteral.Shape;
-	}
-
 	*node = varDecl;
 	return ResOk;
 }
