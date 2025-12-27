@@ -1,6 +1,5 @@
 #include "Interpreter.h"
 
-#include "Diagnostics.h"
 #include "Mx.h"
 #include "Parser.h"
 #include <stdio.h>
@@ -47,18 +46,6 @@ static Mx* Interpret(ASTNode* node)
 		for (usz i = 0; i < node->MxLiteral.Shape.Height * node->MxLiteral.Shape.Width; ++i) {
 			Mx* num = Interpret(node->MxLiteral.Matrix[i]);
 
-			if (!num) {
-				DIAG_EMIT(DiagUnexpectedToken, node->MxLiteral.Matrix[i]->Loc.Line, node->MxLiteral.Matrix[i]->Loc.LinePos,
-					DIAG_ARG_STRING("does not return val"));
-				return nullptr;
-			}
-
-			if (num->Shape.Height != 1 || num->Shape.Width != 1) {
-				DIAG_EMIT(DiagUnexpectedToken, node->MxLiteral.Matrix[i]->Loc.Line, node->MxLiteral.Matrix[i]->Loc.LinePos,
-					DIAG_ARG_STRING("does not eval to 1x1"));
-				return nullptr;
-			}
-
 			mx->Data[i] = num->Data[0];
 		}
 
@@ -66,11 +53,6 @@ static Mx* Interpret(ASTNode* node)
 	}
 	case ASTNodeUnary: {
 		Mx* operand = Interpret(node->Unary.Operand);
-		if (!operand) {
-			DIAG_EMIT(DiagUnexpectedToken, node->Unary.Operand->Loc.Line, node->Unary.Operand->Loc.LinePos,
-				DIAG_ARG_STRING("does not return val"));
-			return nullptr;
-		}
 
 		switch (node->Unary.Operator) {
 		case TokenSubtract: {
@@ -89,7 +71,7 @@ static Mx* Interpret(ASTNode* node)
 				// TODO: Panic!
 				return nullptr;
 			}
-			
+
 			return mx;
 		}
 		default:
@@ -105,7 +87,16 @@ static Mx* Interpret(ASTNode* node)
 
 		switch (node->Binary.Operator) {
 		case TokenAdd: {
-			Mx* mx = AllocMx(left->Shape.Height, left->Shape.Width);
+			Mx* mx = nullptr;
+
+			if (left->Shape.Height == 1 && left->Shape.Width == 1) {
+				mx = AllocMx(right->Shape.Height, right->Shape.Width);
+			} else if (right->Shape.Height == 1 && right->Shape.Width == 1) {
+				mx = AllocMx(left->Shape.Height, left->Shape.Width);
+			} else {
+				mx = AllocMx(left->Shape.Height, left->Shape.Width);
+			}
+
 			Result result = MxAdd(left, right, mx);
 			if (result) {
 				// TODO: Panic!
@@ -114,7 +105,16 @@ static Mx* Interpret(ASTNode* node)
 			return mx;
 		}
 		case TokenSubtract: {
-			Mx* mx = AllocMx(left->Shape.Height, left->Shape.Width);
+			Mx* mx = nullptr;
+
+			if (left->Shape.Height == 1 && left->Shape.Width == 1) {
+				mx = AllocMx(right->Shape.Height, right->Shape.Width);
+			} else if (right->Shape.Height == 1 && right->Shape.Width == 1) {
+				mx = AllocMx(left->Shape.Height, left->Shape.Width);
+			} else {
+				mx = AllocMx(left->Shape.Height, left->Shape.Width);
+			}
+
 			Result result = MxSubtract(left, right, mx);
 			if (result) {
 				// TODO: Panic!
@@ -123,7 +123,16 @@ static Mx* Interpret(ASTNode* node)
 			return mx;
 		}
 		case TokenMultiply: {
-			Mx* mx = AllocMx(left->Shape.Height, right->Shape.Width);
+			Mx* mx = nullptr;
+
+			if (left->Shape.Height == 1 && left->Shape.Width == 1) {
+				mx = AllocMx(right->Shape.Height, right->Shape.Width);
+			} else if (right->Shape.Height == 1 && right->Shape.Width == 1) {
+				mx = AllocMx(left->Shape.Height, left->Shape.Width);
+			} else {
+				mx = AllocMx(left->Shape.Height, right->Shape.Width);
+			}
+
 			Result result = MxMultiply(left, right, mx);
 			if (result) {
 				// TODO: Panic!
@@ -132,7 +141,14 @@ static Mx* Interpret(ASTNode* node)
 			return mx;
 		}
 		case TokenDivide: {
-			Mx* mx = AllocMx(left->Shape.Height, right->Shape.Width);
+			Mx* mx = nullptr;
+
+			if (left->Shape.Height == 1 && left->Shape.Width == 1) {
+				mx = AllocMx(right->Shape.Height, right->Shape.Width);
+			} else if (right->Shape.Height == 1 && right->Shape.Width == 1) {
+				mx = AllocMx(left->Shape.Height, left->Shape.Width);
+			}
+
 			Result result = MxDivide(left, right, mx);
 			if (result) {
 				// TODO: Panic!

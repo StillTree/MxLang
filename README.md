@@ -32,14 +32,14 @@ display(M)
 
 ```julia
 let A: 2x2 = [3 1][2 4]
-let v = <1 1>
+let v = <<1 1>>
 let k = 0
 
 while k < 5 {
     let x1 = A[1 1] * v[1] + A[1 2] * v[2]
     let x2 = A[2 1] * v[1] + A[2 2] * v[2]
 
-    v = <x1 x2>
+    v = <<x1 x2>>
 
     let n = (v[1] * v[1] + v[2] * v[2]) ^ 0.5
 
@@ -58,7 +58,7 @@ display(v)
 
 ```julia
 let A: 3x3 = [5 1 2][3 9 4][6 7 8]
-let diag = <0 0 0>
+let diag = <<0 0 0>>
 let i = 1
 
 while i <= 3 {
@@ -69,11 +69,42 @@ while i <= 3 {
 let s = diag[1] + diag[2] + diag[3]
 
 if s > 15 {
-    let v = <s 1 1>
+    let v = <<s 1 1>>
     display(v')
 } else {
     display(diag')
 }
+```
+
+### Normalized power iteration (power method)
+
+```julia
+let A: 2x2 = [2 1][1 3]
+let B: 2x2 = [1 0][0 1]
+let v = <<1 0>>
+let sum = 0
+let i = 1
+
+while i <= 4 {
+	v = A * v
+
+    let mag2 = v[1]*v[1] + v[2]*v[2]
+    sum = sum + mag2
+
+    let n = mag2 ^ 0.5
+    if n > 0 {
+        v[1] = v[1] / n
+        v[2] = v[2] / n
+    }
+
+	B = B * A
+
+    i = i + 1
+}
+
+display(v)
+display(B)
+display(sum)
 ```
 
 ## EBNF

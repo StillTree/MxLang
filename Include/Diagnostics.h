@@ -1,29 +1,50 @@
 #pragma once
 
 #include "Memory/StatArena.h"
+#include "Tokenizer.h"
 #include "Types.h"
 
 static constexpr usz MAX_DIAG_ARGS = 2;
 
-typedef enum DiagType { DiagExpectedToken, DiagUnexpectedToken, DiagExpectedTokenAfter, DiagUnusedExpressionResult } DiagType;
+typedef enum DiagType {
+	DiagExpectedToken,
+	DiagExpectedIdentifier,
+	DiagUnexpectedToken,
+	DiagExpectedTokenAfter,
+	DiagEmptyMxLiteralsNotAllowed,
+	DiagEmptyVecLiteralsNotAllowed,
+	DiagRedeclarationInScope,
+	DiagUndeclaredVarUsed,
+	DiagExprDoesNotReturnValue,
+	DiagMxLiteralOnly1x1,
+	DiagMxLiteralShapesDifferAddSub,
+	DiagMxLiteralShapesDifferMul,
+	DiagMxLiteralShapesDifferDiv,
+	DiagMxLiteralShapesDifferComp,
+	DiagMxLiteralShapesDifferAssign,
+	DiagMxLiteralInvalidPower,
+	DiagUninitializedUntypedVar,
+	DiagUninitializedConstVar,
+	DiagAssignToConstVar,
+	DiagUnusedExpressionResult
+} DiagType;
 
-typedef enum DiagArgType {
-	DiagArgChar,
-	DiagArgString,
-} DiagArgType;
+typedef enum DiagArgType { DiagArgChar, DiagArgToken, DiagArgTokenType, DiagArgSymbolView, DiagArgMxShape } DiagArgType;
 
 typedef struct DiagArg {
 	DiagArgType Type;
 	union {
 		char Char;
-		const char* String;
+		Token Token;
+		TokenType TokenType;
+		SymbolView SymbolView;
+		MxShape MxShape;
 	};
 } DiagArg;
 
 typedef struct Diag {
 	DiagType Type;
-	usz SourceLine;
-	usz SourceLinePos;
+	SourceLoc Loc;
 	DiagArg Args[MAX_DIAG_ARGS];
 } Diag;
 
@@ -33,20 +54,22 @@ typedef struct DiagState {
 } DiagState;
 
 Result DiagInit();
-void DiagEmit(DiagType type, usz sourceLine, usz sourceLinePos, const DiagArg* args, usz argCount);
+void DiagEmit(DiagType type, SourceLoc loc, const DiagArg* args, usz argCount);
 usz DiagReport();
 Result DiagDeinit();
 
 extern DiagState g_diagState;
 
 #define DIAG_ARG_CHAR(x) ((DiagArg) { DiagArgChar, { .Char = (x) } })
-#define DIAG_ARG_STRING(x) ((DiagArg) { DiagArgString, { .String = (x) } })
+#define DIAG_ARG_TOKEN(x) ((DiagArg) { DiagArgToken, { .Token = (x) } })
+#define DIAG_ARG_TOKEN_TYPE(x) ((DiagArg) { DiagArgTokenType, { .TokenType = (x) } })
+#define DIAG_ARG_SYMBOL_VIEW(x) ((DiagArg) { DiagArgSymbolView, { .SymbolView = (x) } })
+#define DIAG_ARG_MX_SHAPE(x) ((DiagArg) { DiagArgMxShape, { .MxShape = (x) } })
 
-#define DIAG_EMIT0(type, sourceLine, sourceLinePos) DiagEmit((type), (sourceLine), (sourceLinePos), nullptr, 0)
+#define DIAG_EMIT0(type, loc) DiagEmit((type), (loc), nullptr, 0)
 
-#define DIAG_EMIT(type, sourceLine, sourceLinePos, ...)                                                                                    \
+#define DIAG_EMIT(type, loc, ...)                                                                                                          \
 	do {                                                                                                                                   \
 		static_assert(sizeof((const DiagArg[]) { __VA_ARGS__ }) / sizeof(DiagArg) <= MAX_DIAG_ARGS, "Too many diagnostic arguments");      \
-		DiagEmit((type), (sourceLine), (sourceLinePos), (const DiagArg[]) { __VA_ARGS__ },                                                 \
-			sizeof((const DiagArg[]) { __VA_ARGS__ }) / sizeof(DiagArg));                                                                  \
+		DiagEmit((type), (loc), (const DiagArg[]) { __VA_ARGS__ }, sizeof((const DiagArg[]) { __VA_ARGS__ }) / sizeof(DiagArg));           \
 	} while (false)

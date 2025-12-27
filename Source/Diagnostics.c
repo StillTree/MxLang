@@ -2,6 +2,7 @@
 
 #include "SourceManager.h"
 #include <assert.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -16,9 +17,26 @@ typedef struct DiagInfo {
 	const char* Format;
 } DiagInfo;
 
-static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelError, "Expected token '%0'" },
-	[DiagUnexpectedToken] = { DiagLevelError, "Unexpected token '%0'" },
-	[DiagExpectedTokenAfter] = { DiagLevelError, "Expected '%0' after '%1'" },
+static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelError, "Expected token %0" },
+	[DiagExpectedIdentifier] = { DiagLevelError, "Expected identifier" },
+	[DiagUnexpectedToken] = { DiagLevelError, "Unexpected token %0" },
+	[DiagExpectedTokenAfter] = { DiagLevelError, "Expected token %0 after %1" },
+	[DiagEmptyMxLiteralsNotAllowed] = { DiagLevelError, "Empty matrix literals are not allowed" },
+	[DiagEmptyVecLiteralsNotAllowed] = { DiagLevelError, "Empty vector literals are not allowed" },
+	[DiagRedeclarationInScope] = { DiagLevelError, "Variable redeclaration in current scope" },
+	[DiagUndeclaredVarUsed] = { DiagLevelError, "Undeclared variable %0 used" },
+	[DiagExprDoesNotReturnValue] = { DiagLevelError, "Expression does not return a value" },
+	[DiagMxLiteralOnly1x1] = { DiagLevelError, "A matrix literal here can only be 1x1" },
+	[DiagMxLiteralShapesDifferAddSub] = { DiagLevelError, "Matrices of shapes %0 and %1 cannot be added/subtracted together" },
+	[DiagMxLiteralShapesDifferMul] = { DiagLevelError, "Matrices of shapes %0 and %1 cannot be multiplied together" },
+	[DiagMxLiteralShapesDifferDiv]
+	= { DiagLevelError, "Matrices of shapes %0 and %1 cannot be divided together. Consider multiplication by the inverse matrix" },
+	[DiagMxLiteralShapesDifferComp] = { DiagLevelError, "Matrices of shapes %0 and %1 cannot be compared together" },
+	[DiagMxLiteralShapesDifferAssign] = { DiagLevelError, "Assigning a matrix of shape %0 to a variable of shape %1" },
+	[DiagMxLiteralInvalidPower] = { DiagLevelError, "A matrix can only be raised to a power of a natural number" },
+	[DiagUninitializedUntypedVar] = { DiagLevelError, "Variable %0 must have either a type declaration or an initialization expression" },
+	[DiagUninitializedConstVar] = { DiagLevelError, "A const variable %0 must have an initialization expression" },
+	[DiagAssignToConstVar] = { DiagLevelError, "Assignment to a constant variable" },
 	[DiagUnusedExpressionResult] = { DiagLevelWarning, "Unused expression result" } };
 
 static usz NumberWidth(usz num)
@@ -33,6 +51,132 @@ static usz NumberWidth(usz num)
 	return width;
 }
 
+static void PrintTokenType(TokenType tokenType, FILE* out)
+{
+	if (tokenType < 256) {
+		fputc('\'', out);
+		fputc((char)tokenType, out);
+		fputc('\'', out);
+		return;
+	}
+
+	switch (tokenType) {
+	case TokenLeftRoundBracket:
+		fputs("'('", out);
+		break;
+	case TokenRightRoundBracket:
+		fputs("')'", out);
+		break;
+	case TokenLeftSquareBracket:
+		fputs("'['", out);
+		break;
+	case TokenRightSquareBracket:
+		fputs("']'", out);
+		break;
+	case TokenLeftVectorBracket:
+		fputs("'<<'", out);
+		break;
+	case TokenRightVectorBracket:
+		fputs("'>>'", out);
+		break;
+	case TokenLeftCurlyBracket:
+		fputs("'{'", out);
+		break;
+	case TokenRightCurlyBracket:
+		fputs("'}'", out);
+		break;
+	case TokenComma:
+		fputs("','", out);
+		break;
+	case TokenAdd:
+		fputs("'+'", out);
+		break;
+	case TokenSubtract:
+		fputs("'-'", out);
+		break;
+	case TokenMultiply:
+		fputs("'*'", out);
+		break;
+	case TokenDivide:
+		fputs("'/'", out);
+		break;
+	case TokenToPower:
+		fputs("'^'", out);
+		break;
+	case TokenTranspose:
+		fputs("\"'\"", out);
+		break;
+	case TokenColon:
+		fputs("':'", out);
+		break;
+	case TokenMatrixShape:
+		fputs("matrix shape", out);
+		break;
+	case TokenEqual:
+		fputs("'='", out);
+		break;
+	case TokenIdentifier:
+		fputs("identifier", out);
+		break;
+	case TokenNumber:
+		fputs("number", out);
+		break;
+	case TokenLet:
+		fputs("'let'", out);
+		break;
+	case TokenConst:
+		fputs("'const'", out);
+		break;
+	case TokenIf:
+		fputs("'if'", out);
+		break;
+	case TokenElse:
+		fputs("'else'", out);
+		break;
+	case TokenWhile:
+		fputs("'while'", out);
+		break;
+	case TokenOr:
+		fputs("'or'", out);
+		break;
+	case TokenAnd:
+		fputs("'and'", out);
+		break;
+	case TokenEqualEqual:
+		fputs("'=='", out);
+		break;
+	case TokenNotEqual:
+		fputs("'!='", out);
+		break;
+	case TokenLess:
+		fputs("'<'", out);
+		break;
+	case TokenLessEqual:
+		fputs("'<='", out);
+		break;
+	case TokenGreater:
+		fputs("'>'", out);
+		break;
+	case TokenGreaterEqual:
+		fputs("'>='", out);
+		break;
+	case TokenEof:
+		fputs("EOF", out);
+		break;
+	}
+}
+
+static void PrintToken(const Token* token, FILE* out)
+{
+	if (token->Type == TokenIdentifier) {
+		fprintf(out, "'%.*s'", (i32)token->Lexeme.SymbolLength, token->Lexeme.Symbol);
+	} else if (token->Type == TokenNumber) {
+		fprintf(out, "'%lf'", token->Number);
+	} else {
+		PrintTokenType(token->Type, out);
+	}
+}
+
 void PrintDiagFormat(FILE* out, const char* format, const Diag* diag)
 {
 	const char* iter = format;
@@ -42,10 +186,21 @@ void PrintDiagFormat(FILE* out, const char* format, const Diag* diag)
 
 			switch (diag->Args[i].Type) {
 			case DiagArgChar:
+				fputc('\'', out);
 				fputc(diag->Args[i].Char, out);
+				fputc('\'', out);
 				break;
-			case DiagArgString:
-				fputs(diag->Args[i].String, out);
+			case DiagArgToken:
+				PrintToken(&diag->Args[i].Token, out);
+				break;
+			case DiagArgTokenType:
+				PrintTokenType(diag->Args[i].TokenType, out);
+				break;
+			case DiagArgSymbolView:
+				fprintf(out, "'%.*s'", (i32)diag->Args[i].SymbolView.SymbolLength, diag->Args[i].SymbolView.Symbol);
+				break;
+			case DiagArgMxShape:
+				fprintf(out, "%zux%zu", diag->Args[i].MxShape.Height, diag->Args[i].MxShape.Width);
 				break;
 			}
 
@@ -64,34 +219,46 @@ void DiagPrint(const Diag* diag)
 
 	FILE* out = info->Level == DiagLevelError ? stderr : stdout;
 
-	fprintf(out, "%s:%zu:%zu %s: ", g_source.FileName, diag->SourceLine, diag->SourceLinePos, DIAG_LEVEL_STR[info->Level]);
+	fprintf(out, "%s:%zu:%zu %s: ", g_source.FileName, diag->Loc.Line, diag->Loc.LinePos, DIAG_LEVEL_STR[info->Level]);
 	PrintDiagFormat(out, info->Format, diag);
 
 	fputc('\n', out);
 
-	usz numWidth = NumberWidth(diag->SourceLine);
+	usz numWidth = NumberWidth(diag->Loc.Line);
 
 	for (usz i = 0; i < numWidth; ++i) {
 		fputc(' ', out);
 	}
 	fprintf(out, " |\n");
 
-	fprintf(out, "%zu | ", diag->SourceLine);
+	fprintf(out, "%zu | ", diag->Loc.Line);
 
-	const char* iter = g_source.Lines[diag->SourceLine - 1];
+	const char* iter = g_source.Lines[diag->Loc.Line - 1];
+	bool beginning = true;
 	while (*iter != '\n' && *iter != '\0') {
+		if (beginning && isspace(*iter)) {
+			++iter;
+			continue;
+		}
+
+		beginning = false;
 		fputc(*iter, out);
 		++iter;
 	}
 	fputc('\n', out);
 
-	// TODO: Spaces brake this
 	for (usz i = 0; i < numWidth; ++i) {
 		fputc(' ', out);
 	}
 	fprintf(out, " | ");
 
-	for (usz i = 0; i < diag->SourceLinePos - 1; ++i) {
+	beginning = true;
+	for (usz i = 0; i < diag->Loc.LinePos - 1; ++i) {
+		if (beginning && isspace(g_source.Lines[diag->Loc.Line - 1][i])) {
+			continue;
+		}
+
+		beginning = false;
 		fputc(' ', out);
 	}
 	fprintf(out, "^\n\n");
@@ -113,14 +280,13 @@ Result DiagInit()
 	return ResOk;
 }
 
-void DiagEmit(DiagType type, usz sourceLine, usz sourceLinePos, const DiagArg* args, usz argCount)
+void DiagEmit(DiagType type, SourceLoc loc, const DiagArg* args, usz argCount)
 {
 	Diag* diag = nullptr;
 	assert(StatArenaAlloc(&g_diagState.Arena, (void**)&diag) == ResOk);
 
 	diag->Type = type;
-	diag->SourceLine = sourceLine;
-	diag->SourceLinePos = sourceLinePos;
+	diag->Loc = loc;
 	for (usz i = 0; i < argCount; ++i) {
 		diag->Args[i] = args[i];
 	}

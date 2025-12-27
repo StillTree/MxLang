@@ -1,6 +1,18 @@
 #include "Mx.h"
 
+#include <math.h>
 #include <stdio.h>
+
+static bool IsF64Int(f64 num)
+{
+	if (!isfinite(num))
+		return false;
+
+	if (num < (double)INT64_MIN || num > (double)INT64_MAX)
+		return false;
+
+	return trunc(num) == num;
+}
 
 void MxPrint(const Mx* mx)
 {
@@ -21,6 +33,26 @@ void MxPrint(const Mx* mx)
 
 Result MxAdd(const Mx* left, const Mx* right, Mx* out)
 {
+	if (left->Shape.Height == 1 && left->Shape.Width == 1) {
+		out->Shape = right->Shape;
+
+		for (usz i = 0; i < out->Shape.Height * out->Shape.Width; ++i) {
+			out->Data[i] = left->Data[0] + right->Data[i];
+		}
+
+		return ResOk;
+	}
+
+	if (right->Shape.Height == 1 && right->Shape.Width == 1) {
+		out->Shape = left->Shape;
+
+		for (usz i = 0; i < out->Shape.Height * out->Shape.Width; ++i) {
+			out->Data[i] = left->Data[i] + right->Data[0];
+		}
+
+		return ResOk;
+	}
+
 	out->Shape.Height = left->Shape.Height;
 	out->Shape.Width = left->Shape.Width;
 
@@ -33,6 +65,26 @@ Result MxAdd(const Mx* left, const Mx* right, Mx* out)
 
 Result MxSubtract(const Mx* left, const Mx* right, Mx* out)
 {
+	if (left->Shape.Height == 1 && left->Shape.Width == 1) {
+		out->Shape = right->Shape;
+
+		for (usz i = 0; i < out->Shape.Height * out->Shape.Width; ++i) {
+			out->Data[i] = left->Data[0] - right->Data[i];
+		}
+
+		return ResOk;
+	}
+
+	if (right->Shape.Height == 1 && right->Shape.Width == 1) {
+		out->Shape = left->Shape;
+
+		for (usz i = 0; i < out->Shape.Height * out->Shape.Width; ++i) {
+			out->Data[i] = left->Data[i] - right->Data[0];
+		}
+
+		return ResOk;
+	}
+
 	out->Shape.Height = left->Shape.Height;
 	out->Shape.Width = left->Shape.Width;
 
@@ -45,6 +97,26 @@ Result MxSubtract(const Mx* left, const Mx* right, Mx* out)
 
 Result MxMultiply(const Mx* left, const Mx* right, Mx* out)
 {
+	if (left->Shape.Height == 1 && left->Shape.Width == 1) {
+		out->Shape = right->Shape;
+
+		for (usz i = 0; i < out->Shape.Height * out->Shape.Width; ++i) {
+			out->Data[i] = left->Data[0] * right->Data[i];
+		}
+
+		return ResOk;
+	}
+
+	if (right->Shape.Height == 1 && right->Shape.Width == 1) {
+		out->Shape = left->Shape;
+
+		for (usz i = 0; i < out->Shape.Height * out->Shape.Width; ++i) {
+			out->Data[i] = left->Data[i] * right->Data[0];
+		}
+
+		return ResOk;
+	}
+
 	out->Shape.Height = left->Shape.Height;
 	out->Shape.Width = right->Shape.Width;
 
@@ -62,16 +134,28 @@ Result MxMultiply(const Mx* left, const Mx* right, Mx* out)
 
 Result MxDivide(const Mx* left, const Mx* right, Mx* out)
 {
-	out->Shape.Height = left->Shape.Height;
-	out->Shape.Width = right->Shape.Width;
-
-	for (usz i = 0; i < left->Shape.Height; ++i) {
-		for (usz j = 0; j < right->Shape.Height; ++j) {
-			for (usz k = 0; k < right->Shape.Width; ++k) {
-				out->Data[(i * out->Shape.Width) + k]
-					+= left->Data[(i * left->Shape.Width) + j] / right->Data[(j * right->Shape.Width) + k];
-			}
+	if (left->Shape.Height == 1 && left->Shape.Width == 1) {
+		if (left->Data[0] == 0) {
+			return ResErr;
 		}
+
+		out->Shape = right->Shape;
+
+		for (usz i = 0; i < out->Shape.Height * out->Shape.Width; ++i) {
+			out->Data[i] = left->Data[0] / right->Data[i];
+		}
+
+		return ResOk;
+	}
+
+	if (right->Data[0] == 0) {
+		return ResErr;
+	}
+
+	out->Shape = left->Shape;
+
+	for (usz i = 0; i < out->Shape.Height * out->Shape.Width; ++i) {
+		out->Data[i] = left->Data[i] / right->Data[0];
 	}
 
 	return ResOk;
@@ -79,6 +163,18 @@ Result MxDivide(const Mx* left, const Mx* right, Mx* out)
 
 Result MxToPower(const Mx* left, const Mx* right, Mx* out)
 {
+	if (left->Shape.Height == 1 && left->Shape.Width == 1 && right->Shape.Height == 1 && right->Shape.Width == 1) {
+		out->Shape = left->Shape;
+
+		out->Data[0] = pow(left->Data[0], right->Data[0]);
+
+		return ResOk;
+	}
+
+	if (!IsF64Int(right->Data[0])) {
+		return ResErr;
+	}
+
 	out->Shape = left->Shape;
 
 	for (usz i = 0; i < out->Shape.Height * out->Shape.Width; ++i) {

@@ -2,7 +2,6 @@
 
 #include "Diagnostics.h"
 #include "Parser.h"
-#include <stdio.h>
 #include <stdlib.h>
 
 TypeChecker g_typeChecker = { 0 };
@@ -88,14 +87,12 @@ static Result SymbolBind(ASTNode* node)
 			return result;
 		}
 
-		printf("Entering scope\n");
 		for (usz i = 0; i < node->Block.NodeCount; ++i) {
 			result = SymbolBind(node->Block.Nodes[i]);
 			if (result) {
 				return result;
 			}
 		}
-		printf("Exitting scope\n");
 
 		return BindingExitScope();
 	}
@@ -136,11 +133,10 @@ static Result SymbolBind(ASTNode* node)
 		usz newID;
 		Result result = BindingInsert(g_typeChecker.CurBindingScope, node->VarDecl.Identifier.Symbol, &newID);
 		if (result) {
-			DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("redeclaration in current scope"));
+			DIAG_EMIT0(DiagRedeclarationInScope, node->Loc);
 			return ResOk;
 		}
 
-		printf("New ID: %.*s -> %zu\n", (i32)node->VarDecl.Identifier.SymbolLength, node->VarDecl.Identifier.Symbol, newID);
 		node->VarDecl.ID = newID;
 
 		if (node->VarDecl.Expression) {
@@ -156,11 +152,10 @@ static Result SymbolBind(ASTNode* node)
 		usz id;
 		Result result = BindingLookup(g_typeChecker.CurBindingScope, node->Assignment.Identifier.Symbol, &id);
 		if (result) {
-			DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("undeclared variable used"));
+			DIAG_EMIT(DiagUndeclaredVarUsed, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->Assignment.Identifier));
 			return ResOk;
 		}
 
-		printf("Bound ID: %.*s -> %zu\n", (i32)node->Assignment.Identifier.SymbolLength, node->Assignment.Identifier.Symbol, id);
 		node->Assignment.ID = id;
 
 		if (node->Assignment.Index) {
@@ -186,11 +181,10 @@ static Result SymbolBind(ASTNode* node)
 		usz id;
 		Result result = BindingLookup(g_typeChecker.CurBindingScope, node->Identifier.Identifier.Symbol, &id);
 		if (result) {
-			DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("undeclared variable used"));
+			DIAG_EMIT(DiagUndeclaredVarUsed, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->Identifier.Identifier));
 			return ResOk;
 		}
 
-		printf("Bound ID: %.*s -> %zu\n", (i32)node->Identifier.Identifier.SymbolLength, node->Identifier.Identifier.Symbol, id);
 		node->Identifier.ID = id;
 
 		if (node->Identifier.Index) {
@@ -253,14 +247,12 @@ MxShape* TypeCheck(ASTNode* node)
 			MxShape* mx = TypeCheck(node->MxLiteral.Matrix[i]);
 
 			if (!mx) {
-				DIAG_EMIT(DiagUnexpectedToken, node->MxLiteral.Matrix[i]->Loc.Line, node->MxLiteral.Matrix[i]->Loc.LinePos,
-					DIAG_ARG_STRING("does not return val"));
+				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->MxLiteral.Matrix[i]->Loc);
 				return nullptr;
 			}
 
 			if (mx->Height != 1 || mx->Width != 1) {
-				DIAG_EMIT(DiagUnexpectedToken, node->MxLiteral.Matrix[i]->Loc.Line, node->MxLiteral.Matrix[i]->Loc.LinePos,
-					DIAG_ARG_STRING("mat lit only 1x1"));
+				DIAG_EMIT0(DiagMxLiteralOnly1x1, node->MxLiteral.Matrix[i]->Loc);
 				return nullptr;
 			}
 		}
@@ -276,8 +268,7 @@ MxShape* TypeCheck(ASTNode* node)
 
 		MxShape* operand = TypeCheck(node->Unary.Operand);
 		if (!operand) {
-			DIAG_EMIT(DiagUnexpectedToken, node->Unary.Operand->Loc.Line, node->Unary.Operand->Loc.LinePos,
-				DIAG_ARG_STRING("expression does not return value"));
+			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Unary.Operand->Loc);
 			return nullptr;
 		}
 
@@ -312,21 +303,48 @@ MxShape* TypeCheck(ASTNode* node)
 			if (left->Height == right->Height && left->Width == right->Width) {
 				*shape = *left;
 				break;
+			} else if (left->Height == 1 && left->Width == 1) {
+				*shape = *right;
+				break;
+			} else if (right->Height == 1 && right->Width == 1) {
+				*shape = *left;
+				break;
 			} else {
-				DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("incompatible matrix shapes add/sub"));
+				DIAG_EMIT(DiagMxLiteralShapesDifferAddSub, node->Loc, DIAG_ARG_MX_SHAPE(*left), DIAG_ARG_MX_SHAPE(*right));
 				return nullptr;
 			}
 		case TokenMultiply:
-		case TokenDivide:
 			if (left->Width == right->Height) {
 				shape->Height = left->Height;
 				shape->Width = right->Width;
 				break;
+			} else if (left->Height == 1 && left->Width == 1) {
+				*shape = *right;
+				break;
+			} else if (right->Height == 1 && right->Width == 1) {
+				*shape = *left;
+				break;
 			} else {
-				DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("incompatible matrix shapes mul/div"));
+				DIAG_EMIT(DiagMxLiteralShapesDifferMul, node->Loc, DIAG_ARG_MX_SHAPE(*left), DIAG_ARG_MX_SHAPE(*right));
+				return nullptr;
+			}
+		case TokenDivide:
+			if (left->Height == 1 && left->Width == 1) {
+				*shape = *right;
+				break;
+			} else if (right->Height == 1 && right->Width == 1) {
+				*shape = *left;
+				break;
+			} else {
+				DIAG_EMIT(DiagMxLiteralShapesDifferDiv, node->Loc, DIAG_ARG_MX_SHAPE(*left), DIAG_ARG_MX_SHAPE(*right));
 				return nullptr;
 			}
 		case TokenToPower:
+			if (right->Height != 1 || right->Width != 1) {
+				DIAG_EMIT0(DiagMxLiteralInvalidPower, node->Binary.Right->Loc);
+				return nullptr;
+			}
+
 			*shape = *left;
 			break;
 		case TokenGreater:
@@ -336,7 +354,7 @@ MxShape* TypeCheck(ASTNode* node)
 		case TokenEqualEqual:
 		case TokenNotEqual:
 			if (left->Height != right->Height || left->Width != right->Width) {
-				DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("incompatible matrix shapes comp/eq"));
+				DIAG_EMIT(DiagMxLiteralShapesDifferComp, node->Loc, DIAG_ARG_MX_SHAPE(*left), DIAG_ARG_MX_SHAPE(*right));
 				return nullptr;
 			}
 
@@ -376,8 +394,7 @@ MxShape* TypeCheck(ASTNode* node)
 		MxShape* varShape;
 		if (!node->VarDecl.HasDeclaredShape) {
 			if (!initShape) {
-				DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
-					DIAG_ARG_STRING("uninitialized untyped var"));
+				DIAG_EMIT(DiagUninitializedUntypedVar, node->VarDecl.Expression->Loc, DIAG_ARG_SYMBOL_VIEW(node->VarDecl.Identifier));
 				return nullptr;
 			}
 
@@ -391,15 +408,14 @@ MxShape* TypeCheck(ASTNode* node)
 		node->VarDecl.Shape = *varShape;
 
 		if (node->VarDecl.IsConst && !initShape) {
-			DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
-				DIAG_ARG_STRING("uninitialized const var"));
+			DIAG_EMIT(DiagUninitializedConstVar, node->VarDecl.Expression->Loc, DIAG_ARG_SYMBOL_VIEW(node->VarDecl.Identifier));
 			return nullptr;
 		}
 
 		if (initShape) {
 			if (varShape->Height != initShape->Height || varShape->Width != initShape->Width) {
-				DIAG_EMIT(DiagUnexpectedToken, node->VarDecl.Expression->Loc.Line, node->VarDecl.Expression->Loc.LinePos,
-					DIAG_ARG_STRING("uncompatible matrix shapes assign decl"));
+				DIAG_EMIT(DiagMxLiteralShapesDifferAssign, node->VarDecl.Expression->Loc, DIAG_ARG_MX_SHAPE(*initShape),
+					DIAG_ARG_MX_SHAPE(*varShape));
 				return nullptr;
 			}
 
@@ -412,7 +428,7 @@ MxShape* TypeCheck(ASTNode* node)
 		usz id = node->Assignment.ID;
 
 		if (g_typeChecker.TypeCheckingTable[id].IsConst) {
-			DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("assignment to const"));
+			DIAG_EMIT0(DiagAssignToConstVar, node->Loc);
 			return nullptr;
 		}
 
@@ -420,58 +436,56 @@ MxShape* TypeCheck(ASTNode* node)
 		MxShape* varShape = &g_typeChecker.TypeCheckingTable[id].Shape;
 
 		if (!assignShape) {
-			DIAG_EMIT(DiagUnexpectedToken, node->Loc.Line, node->Loc.LinePos, DIAG_ARG_STRING("expression does not return value"));
+			DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Loc);
 			return nullptr;
 		}
 
 		if (!node->Assignment.Index) {
 			if (varShape->Height != assignShape->Height || varShape->Width != assignShape->Width) {
-				DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Expression->Loc.Line, node->Assignment.Expression->Loc.LinePos,
-					DIAG_ARG_STRING("uncompatible matrix shapes assign"));
+				DIAG_EMIT(DiagMxLiteralShapesDifferAssign, node->Assignment.Expression->Loc, DIAG_ARG_MX_SHAPE(*assignShape),
+					DIAG_ARG_MX_SHAPE(*varShape));
 				return nullptr;
 			}
 		} else {
-			if (!node->Assignment.Index->IndexSuffix.J) {
-				MxShape* mxI = TypeCheck(node->Assignment.Index->IndexSuffix.I);
-				if (!mxI) {
-					DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Index->IndexSuffix.I->Loc.Line,
-						node->Assignment.Index->IndexSuffix.I->Loc.LinePos, DIAG_ARG_STRING("expression does not return value"));
+			MxShape* mxI = TypeCheck(node->Assignment.Index->IndexSuffix.I);
+			if (!mxI) {
+				DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Loc);
+				return nullptr;
+			}
+
+			if (mxI->Height != 1 || mxI->Width != 1) {
+				DIAG_EMIT0(DiagMxLiteralOnly1x1, node->Assignment.Index->IndexSuffix.I->Loc);
+				return nullptr;
+			}
+
+			if (node->Assignment.Index->IndexSuffix.J) {
+				MxShape* mxJ = TypeCheck(node->Assignment.Index->IndexSuffix.J);
+				if (!mxJ) {
+					DIAG_EMIT0(DiagExprDoesNotReturnValue, node->Loc);
 					return nullptr;
 				}
 
-				if (mxI->Height != 1 || mxI->Width != 1) {
-					DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Index->IndexSuffix.I->Loc.Line,
-						node->Assignment.Index->IndexSuffix.I->Loc.LinePos, DIAG_ARG_STRING("index can only be 1x1"));
+				if (mxJ->Height != 1 || mxJ->Width != 1) {
+					DIAG_EMIT0(DiagMxLiteralOnly1x1, node->Assignment.Index->IndexSuffix.I->Loc);
 					return nullptr;
 				}
 
+				if (assignShape->Height != 1 || assignShape->Width != 1) {
+					MxShape correctShape = { .Height = 1, .Width = 1 };
+					DIAG_EMIT(DiagMxLiteralShapesDifferAssign, node->Assignment.Expression->Loc, DIAG_ARG_MX_SHAPE(*assignShape),
+						DIAG_ARG_MX_SHAPE(correctShape));
+					return nullptr;
+				}
+			} else {
 				if (assignShape->Height != 1 || assignShape->Width != varShape->Width) {
-					DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Expression->Loc.Line, node->Assignment.Expression->Loc.LinePos,
-						DIAG_ARG_STRING("uncompatible matrix shapes assign"));
+					MxShape correctShape = { .Height = 1, .Width = varShape->Width };
+					DIAG_EMIT(DiagMxLiteralShapesDifferAssign, node->Assignment.Expression->Loc, DIAG_ARG_MX_SHAPE(*assignShape),
+						DIAG_ARG_MX_SHAPE(correctShape));
 					return nullptr;
 				}
-
-				return nullptr;
 			}
 
-			MxShape* mxJ = TypeCheck(node->Assignment.Index->IndexSuffix.J);
-			if (!mxJ) {
-				DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Index->IndexSuffix.J->Loc.Line,
-					node->Assignment.Index->IndexSuffix.J->Loc.LinePos, DIAG_ARG_STRING("expression does not return value"));
-				return nullptr;
-			}
-
-			if (mxJ->Height != 1 || mxJ->Width != 1) {
-				DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Index->IndexSuffix.J->Loc.Line,
-					node->Assignment.Index->IndexSuffix.J->Loc.LinePos, DIAG_ARG_STRING("index can only be 1x1"));
-				return nullptr;
-			}
-
-			if (node->Assignment.Index->IndexSuffix.J && (assignShape->Height != 1 || assignShape->Width != 1)) {
-				DIAG_EMIT(DiagUnexpectedToken, node->Assignment.Expression->Loc.Line, node->Assignment.Expression->Loc.LinePos,
-					DIAG_ARG_STRING("uncompatible matrix shapes assign"));
-				return nullptr;
-			}
+			return nullptr;
 		}
 
 		return nullptr;
@@ -513,7 +527,7 @@ MxShape* TypeCheck(ASTNode* node)
 		for (usz i = 0; i < node->Block.NodeCount; ++i) {
 			MxShape* shape = TypeCheck(node->Block.Nodes[i]);
 			if (shape) {
-				DIAG_EMIT0(DiagUnusedExpressionResult, node->Block.Nodes[i]->Loc.Line, node->Block.Nodes[i]->Loc.LinePos);
+				DIAG_EMIT0(DiagUnusedExpressionResult, node->Block.Nodes[i]->Loc);
 				return nullptr;
 			}
 		}
