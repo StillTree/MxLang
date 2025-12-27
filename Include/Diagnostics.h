@@ -28,6 +28,14 @@ typedef enum DiagType {
 	DiagAssignToConstVar,
 	DiagIndexOutOfRange,
 	DiagIndexNotInteger,
+	DiagTooManyFunctionCallArgs,
+	DiagTooLittleFunctionCallArgs,
+	DiagFunctionCallArgMustBeCompTime,
+	DiagNotInteger,
+	DiagUndeclaredFunction,
+	DiagLogInvalidBase,
+	DiagLogInvalidArg,
+	DiagSqrtInvalidArg,
 	DiagUnusedExpressionResult,
 	DiagEmptyFileParsed
 } DiagType;

@@ -5,9 +5,13 @@
 #include "Tokenizer.h"
 #include "TypeChecker.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
 
 int main(int argc, char* argv[])
 {
+	srand((u32)time(0));
+
 	printf("MxLang v" MX_VERSION "\n\n");
 
 	if (argc < 2) {

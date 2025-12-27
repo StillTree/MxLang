@@ -39,6 +39,14 @@ static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelErro
 	[DiagAssignToConstVar] = { DiagLevelError, "Assignment to a constant variable" },
 	[DiagIndexOutOfRange] = { DiagLevelError, "Index %0 out of range for matrix of shape %1" },
 	[DiagIndexNotInteger] = { DiagLevelError, "Index %0 is not an integer" },
+	[DiagTooManyFunctionCallArgs] = { DiagLevelError, "Too many arguments in function call %0" },
+	[DiagTooLittleFunctionCallArgs] = { DiagLevelError, "Too little arguments in function call %0" },
+	[DiagFunctionCallArgMustBeCompTime] = { DiagLevelError, "Function call argument here must be a compile-time 1x1 matrix literal" },
+	[DiagNotInteger] = { DiagLevelError, "Number %0 must be an integer" },
+	[DiagUndeclaredFunction] = { DiagLevelError, "Call to undeclared function %0" },
+	[DiagLogInvalidBase] = { DiagLevelError, "Logarithm base %0 must be greater than 0 and not equal to 1" },
+	[DiagLogInvalidArg] = { DiagLevelError, "Logarithm argument %0 must be greater than 0" },
+	[DiagSqrtInvalidArg] = { DiagLevelError, "Square root argument %0 must be greater than or equal to 0" },
 	[DiagUnusedExpressionResult] = { DiagLevelWarning, "Unused expression result" },
 	[DiagEmptyFileParsed] = { DiagLevelNote, "Empty file parsed" } };
 
@@ -180,7 +188,7 @@ static void PrintToken(const Token* token, FILE* out)
 	}
 }
 
-void PrintDiagFormat(FILE* out, const char* format, const Diag* diag)
+static void PrintDiagFormat(FILE* out, const char* format, const Diag* diag)
 {
 	const char* iter = format;
 	while (*iter) {
@@ -219,7 +227,7 @@ void PrintDiagFormat(FILE* out, const char* format, const Diag* diag)
 	}
 }
 
-void DiagPrint(const Diag* diag)
+static void DiagPrint(const Diag* diag)
 {
 	const DiagInfo* info = DIAG_TYPE_INFO + diag->Type;
 
