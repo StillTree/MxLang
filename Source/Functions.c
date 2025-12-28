@@ -232,3 +232,20 @@ Mx* FuncInterpretRand(ASTNode* functionCall)
 
 	return mx;
 }
+
+Mx* FuncInterpretInput(ASTNode* functionCall)
+{
+	printf(">>> ");
+
+	char buf[256];
+
+	if (!fgets(buf, sizeof(buf), stdin)) {
+		printf("asdsa\n");
+		DIAG_EMIT0(DiagInputTooBig, functionCall->Loc);
+		InterpreterPanic();
+	}
+
+	printf("%s", buf);
+
+	return nullptr;
+}

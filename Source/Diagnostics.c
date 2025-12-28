@@ -52,6 +52,7 @@ static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelErro
 	[DiagSqrtInvalidArg] = { DiagLevelError, "Square root argument %0 must be greater than or equal to 0" },
 	[DiagDivisionByZero] = { DiagLevelError, "Division by 0" },
 	[DiagPoweringToNonInt] = { DiagLevelError, "A matrix can only be raised to a power of a positive integer. Here: %0" },
+	[DiagInputTooBig] = { DiagLevelError, "Input can only be 254 characters long" },
 	[DiagUnusedExpressionResult] = { DiagLevelWarning, "Unused expression result" },
 	[DiagEmptyFileParsed] = { DiagLevelNote, "Empty file parsed" } };
 

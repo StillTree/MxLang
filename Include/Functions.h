@@ -17,3 +17,4 @@ Mx* FuncInterpretCos(ASTNode* functionCall);
 Mx* FuncInterpretTan(ASTNode* functionCall);
 Mx* FuncInterpretCot(ASTNode* functionCall);
 Mx* FuncInterpretRand(ASTNode* functionCall);
+Mx* FuncInterpretInput(ASTNode* functionCall);

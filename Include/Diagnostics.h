@@ -40,6 +40,7 @@ typedef enum DiagType {
 	DiagSqrtInvalidArg,
 	DiagDivisionByZero,
 	DiagPoweringToNonInt,
+	DiagInputTooBig,
 	DiagUnusedExpressionResult,
 	DiagEmptyFileParsed
 } DiagType;

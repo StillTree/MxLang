@@ -19,7 +19,7 @@ void InterpreterInit()
 	DIAG_PANIC_ON_ERR(DynArenaInit(&g_interpreter.MxArena));
 }
 
-[[noreturn]] static void Panic()
+[[noreturn]] void InterpreterPanic()
 {
 	DiagReport();
 
@@ -132,7 +132,7 @@ Mx* InterpreterEval(ASTNode* node)
 			Result result = MxDivide(left, right, mx);
 			if (result) {
 				DIAG_EMIT0(DiagDivisionByZero, node->Binary.Right->Loc);
-				Panic();
+				InterpreterPanic();
 			}
 			return mx;
 		}
@@ -141,7 +141,7 @@ Mx* InterpreterEval(ASTNode* node)
 			Result result = MxToPower(left, right, mx);
 			if (result) {
 				DIAG_EMIT(DiagPoweringToNonInt, node->Binary.Right->Loc, DIAG_ARG_NUMBER(right->Data[0]));
-				Panic();
+				InterpreterPanic();
 			}
 			return mx;
 		}
@@ -248,7 +248,7 @@ Mx* InterpreterEval(ASTNode* node)
 
 			if (!IsF64Int(mxI->Data[0])) {
 				DIAG_EMIT(DiagIndexNotInteger, node->Assignment.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]));
-				Panic();
+				InterpreterPanic();
 			}
 
 			usz i = (usz)mxI->Data[0];
@@ -256,7 +256,7 @@ Mx* InterpreterEval(ASTNode* node)
 			if (i < 1 || i > var->Shape.Height) {
 				DIAG_EMIT(DiagIndexOutOfRange, node->Assignment.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]),
 					DIAG_ARG_MX_SHAPE(var->Shape));
-				Panic();
+				InterpreterPanic();
 			}
 
 			if (node->Assignment.Index->IndexSuffix.J) {
@@ -264,7 +264,7 @@ Mx* InterpreterEval(ASTNode* node)
 
 				if (!IsF64Int(mxJ->Data[0])) {
 					DIAG_EMIT(DiagIndexNotInteger, node->Assignment.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]));
-					Panic();
+					InterpreterPanic();
 				}
 
 				usz j = (usz)mxJ->Data[0];
@@ -272,7 +272,7 @@ Mx* InterpreterEval(ASTNode* node)
 				if (j < 1 || j > var->Shape.Width) {
 					DIAG_EMIT(DiagIndexOutOfRange, node->Assignment.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]),
 						DIAG_ARG_MX_SHAPE(var->Shape));
-					Panic();
+					InterpreterPanic();
 				}
 
 				var->Data[((i - 1) * var->Shape.Width) + j - 1] = newVal->Data[0];
@@ -340,6 +340,10 @@ Mx* InterpreterEval(ASTNode* node)
 			return FuncInterpretRand(node);
 		}
 
+		if (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "input", 5) == 0) {
+			return FuncInterpretInput(node);
+		}
+
 		return nullptr;
 	}
 	case ASTNodeIdentifier: {
@@ -351,7 +355,7 @@ Mx* InterpreterEval(ASTNode* node)
 
 			if (!IsF64Int(mxI->Data[0])) {
 				DIAG_EMIT(DiagIndexNotInteger, node->Identifier.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]));
-				Panic();
+				InterpreterPanic();
 			}
 
 			usz i = (usz)mxI->Data[0];
@@ -359,7 +363,7 @@ Mx* InterpreterEval(ASTNode* node)
 			if (i < 1 || i > var->Shape.Height) {
 				DIAG_EMIT(DiagIndexOutOfRange, node->Identifier.Index->IndexSuffix.I->Loc, DIAG_ARG_NUMBER(mxI->Data[0]),
 					DIAG_ARG_MX_SHAPE(var->Shape));
-				Panic();
+				InterpreterPanic();
 			}
 
 			if (node->Identifier.Index->IndexSuffix.J) {
@@ -367,7 +371,7 @@ Mx* InterpreterEval(ASTNode* node)
 
 				if (!IsF64Int(mxJ->Data[0])) {
 					DIAG_EMIT(DiagIndexNotInteger, node->Identifier.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]));
-					Panic();
+					InterpreterPanic();
 				}
 
 				usz j = (usz)mxJ->Data[0];
@@ -375,7 +379,7 @@ Mx* InterpreterEval(ASTNode* node)
 				if (j < 1 || j > var->Shape.Width) {
 					DIAG_EMIT(DiagIndexOutOfRange, node->Identifier.Index->IndexSuffix.J->Loc, DIAG_ARG_NUMBER(mxJ->Data[0]),
 						DIAG_ARG_MX_SHAPE(var->Shape));
-					Panic();
+					InterpreterPanic();
 				}
 
 				Mx* mx = InterpreterAllocMx(1, 1);
@@ -393,7 +397,7 @@ Mx* InterpreterEval(ASTNode* node)
 		return mx;
 	}
 	default:
-		Panic();
+		InterpreterPanic();
 	}
 }
 

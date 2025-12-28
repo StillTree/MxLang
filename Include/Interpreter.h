@@ -9,6 +9,7 @@ typedef struct Interpreter {
 	Mx** VarTable;
 } Interpreter;
 
+[[noreturn]] void InterpreterPanic();
 Mx* InterpreterAllocMx(usz height, usz width);
 Mx* InterpreterEval(ASTNode* node);
 

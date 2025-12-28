@@ -4,15 +4,9 @@
 
 Parser g_parser = { 0 };
 
-static void ParserAdvance()
-{
-	TokenizerNextToken();
-}
+static void ParserAdvance() { TokenizerNextToken(); }
 
-static Token* ParserPeek()
-{
-	return TokenizerPeekToken();
-}
+static Token* ParserPeek() { return TokenizerPeekToken(); }
 
 static Token* ParserConsume()
 {
@@ -88,7 +82,7 @@ static ASTNode* ParseIdentifierPrimary()
 		functionCall->Type = ASTNodeFunctionCall;
 		functionCall->Loc = loc;
 		functionCall->FunctionCall.Identifier = identifier;
-		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&functionCall->FunctionCall.CallArgs, 8 * sizeof(ASTNode*)));
+		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&functionCall->FunctionCall.CallArgs, 3 * sizeof(ASTNode*)));
 
 		usz i = 0;
 		while (ParserPeek()->Type != TokenRightRoundBracket) {
@@ -98,6 +92,12 @@ static ASTNode* ParseIdentifierPrimary()
 					ParserSynchronize();
 					return nullptr;
 				}
+			}
+
+			if (i > 2) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, functionCall->Loc, DIAG_ARG_SYMBOL_VIEW(functionCall->FunctionCall.Identifier));
+				ParserSynchronize();
+				return nullptr;
 			}
 
 			functionCall->FunctionCall.CallArgs[i] = ParseExpression();
@@ -204,7 +204,6 @@ static ASTNode* ParsePrimary()
 
 		matrixLit->Type = ASTNodeMxLiteral;
 		matrixLit->Loc = token.Loc;
-		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&matrixLit->MxLiteral.Matrix, 64 * sizeof(ASTNode*)));
 
 		if (ParserMatch(TokenRightSquareBracket)) {
 			DIAG_EMIT0(DiagEmptyMxLiteralsNotAllowed, ParserPeek()->Loc);
@@ -235,6 +234,8 @@ static ASTNode* ParsePrimary()
 			++height;
 			width = 0;
 		} while (ParserMatch(TokenLeftSquareBracket));
+
+		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&matrixLit->MxLiteral.Matrix, height * maxWidth * sizeof(ASTNode*)));
 
 		g_tokenizer = backup;
 		usz i = 0;
@@ -289,7 +290,6 @@ static ASTNode* ParsePrimary()
 		vectorLit->Type = ASTNodeMxLiteral;
 		vectorLit->Loc = token.Loc;
 		vectorLit->MxLiteral.Shape.Width = 1;
-		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&vectorLit->MxLiteral.Matrix, 8 * sizeof(ASTNode*)));
 
 		if (ParserMatch(TokenRightVectorBracket)) {
 			DIAG_EMIT0(DiagEmptyVecLiteralsNotAllowed, ParserPeek()->Loc);
@@ -297,8 +297,19 @@ static ASTNode* ParsePrimary()
 			return nullptr;
 		}
 
+		Tokenizer backup = g_tokenizer;
+		usz count = 0;
+		while (ParserPeek()->Type != TokenRightVectorBracket && ParserPeek()->Type != TokenEof) {
+			ParseExpression();
+			++count;
+		}
+
+		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&vectorLit->MxLiteral.Matrix, count * sizeof(ASTNode*)));
+
+		g_tokenizer = backup;
+
 		usz i = 0;
-		while (ParserPeek()->Type != TokenRightVectorBracket) {
+		while (ParserPeek()->Type != TokenRightVectorBracket && ParserPeek()->Type != TokenEof) {
 			vectorLit->MxLiteral.Matrix[i] = ParseExpression();
 			++i;
 		}
@@ -701,7 +712,25 @@ static ASTNode* ParseBlock()
 
 	block->Type = ASTNodeBlock;
 	block->Loc = loc;
-	DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&block->Block.Nodes, 64 * sizeof(ASTNode*)));
+
+	Tokenizer backup = g_tokenizer;
+
+	usz count = 0;
+	while (!ParserMatch(TokenRightCurlyBracket)) {
+		Token* token = ParserPeek();
+		if (token->Type == TokenEof) {
+			DIAG_EMIT(DiagExpectedToken, token->Loc, DIAG_ARG_TOKEN_TYPE(TokenRightCurlyBracket));
+			ParserSynchronize();
+			return nullptr;
+		}
+
+		ParseStatement();
+		++count;
+	}
+
+	DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&block->Block.Nodes, count * sizeof(ASTNode*)));
+
+	g_tokenizer = backup;
 
 	usz i = 0;
 	while (!ParserMatch(TokenRightCurlyBracket)) {
@@ -748,7 +777,27 @@ void ParserParse()
 	DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&topLevelBlock));
 
 	topLevelBlock->Type = ASTNodeBlock;
-	DIAG_PANIC_ON_ERR(DynArenaAllocZeroed(&g_parser.ArraysArena, (void**)&topLevelBlock->Block.Nodes, 64 * sizeof(ASTNode*)));
+
+	Tokenizer backup = g_tokenizer;
+
+	usz count = 0;
+	while (true) {
+		Token* token = ParserPeek();
+		if (token->Type == TokenEof) {
+			break;
+		}
+
+		ASTNode* node = ParseStatement();
+		if (!node) {
+			continue;
+		}
+
+		++count;
+	}
+
+	DIAG_PANIC_ON_ERR(DynArenaAllocZeroed(&g_parser.ArraysArena, (void**)&topLevelBlock->Block.Nodes, count * sizeof(ASTNode*)));
+
+	g_tokenizer = backup;
 
 	usz i = 0;
 	while (true) {
