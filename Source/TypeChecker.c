@@ -580,8 +580,7 @@ MxShape* TypeCheck(ASTNode* node)
 			return shape;
 		}
 
-		if ((node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "rand", 4) == 0)
-			|| (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "input", 5) == 0)) {
+		if (node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "rand", 4) == 0) {
 			if (node->FunctionCall.ArgCount < 2) {
 				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
 				return nullptr;
@@ -609,6 +608,20 @@ MxShape* TypeCheck(ASTNode* node)
 
 			shape->Height = height;
 			shape->Width = width;
+			return shape;
+		}
+
+		if (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "input", 5) == 0) {
+			if (node->FunctionCall.ArgCount > 0) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+				return nullptr;
+			}
+
+			MxShape* shape;
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
+
+			shape->Height = 1;
+			shape->Width = 1;
 			return shape;
 		}
 

@@ -233,6 +233,52 @@ Mx* FuncInterpretRand(ASTNode* functionCall)
 	return mx;
 }
 
+static Result ParseDouble(const char* str, usz strLength, double* num)
+{
+	const char* strEnd = str + strLength;
+	f64 value = 0.0;
+
+	while (str < strEnd && *str >= '0' && *str <= '9') {
+		value *= 10;
+		value += *str++ - '0';
+	}
+
+	if (str < strEnd && *str == '.') {
+		f64 fraction = 0.1;
+		str++;
+
+		while (str < strEnd && *str >= '0' && *str <= '9') {
+			value += (*str++ - '0') * fraction;
+			fraction /= 10;
+		}
+	}
+
+	if (str < strEnd && (*str == 'e' || *str == 'E')) {
+		i64 exponent = 0;
+		i64 exponentSign = 1;
+		str++;
+
+		if (*str == '-') {
+			exponentSign = -1;
+			str++;
+		} else if (*str == '+') {
+			str++;
+		}
+
+		while (str < strEnd && *str >= '0' && *str <= '9') {
+			exponent *= 10;
+			exponent += *str++ - '0';
+		}
+
+		value *= pow(10.0, (f64)exponentSign * (f64)exponent);
+	} else if (str < strEnd) {
+		return ResErr;
+	}
+
+	*num = value;
+	return ResOk;
+}
+
 Mx* FuncInterpretInput(ASTNode* functionCall)
 {
 	printf(">>> ");
@@ -240,12 +286,24 @@ Mx* FuncInterpretInput(ASTNode* functionCall)
 	char buf[256];
 
 	if (!fgets(buf, sizeof(buf), stdin)) {
-		printf("asdsa\n");
 		DIAG_EMIT0(DiagInputTooBig, functionCall->Loc);
 		InterpreterPanic();
 	}
 
-	printf("%s", buf);
+	usz len = strlen(buf);
+	if (buf[len - 1] == '\n') {
+		--len;
+	}
 
-	return nullptr;
+	double num;
+	Result result = ParseDouble(buf, len, &num);
+	if (result) {
+		DIAG_EMIT0(DiagInvalidInput, functionCall->Loc);
+		InterpreterPanic();
+	}
+
+	Mx* mx = InterpreterAllocMx(1, 1);
+	mx->Data[0] = num;
+
+	return mx;
 }
