@@ -63,7 +63,7 @@ typedef struct Tokenizer {
 	usz SourceLine;
 	usz SourceLinePos;
 	SymbolTable TableIdentifiers;
-	Token LastReturnedToken;
+	Token LookaheadToken;
 	bool HasLookahead;
 } Tokenizer;
 

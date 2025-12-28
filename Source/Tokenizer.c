@@ -112,20 +112,20 @@ static bool TokenizerMatch(char expected)
 static void TokenizerAddToken(TokenType type, const SymbolView* lexeme, f64 number, const MxShape* matrixShape)
 {
 	if (type == TokenEof) {
-		g_tokenizer.LastReturnedToken.Loc.LinePos = (usz)(g_tokenizer.SourceEnd - g_source.Lines[g_tokenizer.SourceLine - 1] + 1);
+		g_tokenizer.LookaheadToken.Loc.LinePos = (usz)(g_tokenizer.SourceEnd - g_source.Lines[g_tokenizer.SourceLine - 1] + 1);
 	} else {
-		g_tokenizer.LastReturnedToken.Loc.LinePos = g_tokenizer.SourceLinePos - (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
+		g_tokenizer.LookaheadToken.Loc.LinePos = g_tokenizer.SourceLinePos - (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
 	}
 
-	g_tokenizer.LastReturnedToken.Loc.Line = g_tokenizer.SourceLine;
-	g_tokenizer.LastReturnedToken.Type = type;
+	g_tokenizer.LookaheadToken.Loc.Line = g_tokenizer.SourceLine;
+	g_tokenizer.LookaheadToken.Type = type;
 
 	if (type == TokenNumber) {
-		g_tokenizer.LastReturnedToken.Number = number;
+		g_tokenizer.LookaheadToken.Number = number;
 	} else if (type == TokenIdentifier) {
-		g_tokenizer.LastReturnedToken.Lexeme = *lexeme;
+		g_tokenizer.LookaheadToken.Lexeme = *lexeme;
 	} else if (type == TokenMatrixShape) {
-		g_tokenizer.LastReturnedToken.MatrixShape = *matrixShape;
+		g_tokenizer.LookaheadToken.MatrixShape = *matrixShape;
 	}
 }
 
@@ -194,21 +194,21 @@ Token* TokenizerPeekToken()
 		return token;
 	}
 
-	return &g_tokenizer.LastReturnedToken;
+	return &g_tokenizer.LookaheadToken;
 }
 
 Token* TokenizerNextToken()
 {
 	if (g_tokenizer.HasLookahead) {
 		g_tokenizer.HasLookahead = false;
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	}
 
 	TokenizerSkipWhiteSpace();
 
 	if (g_tokenizer.LexemeCurrent >= g_tokenizer.SourceEnd) {
 		TokenizerAddToken(TokenEof, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	}
 
 	g_tokenizer.LexemeStart = g_tokenizer.LexemeCurrent;
@@ -218,16 +218,16 @@ Token* TokenizerNextToken()
 	switch (c) {
 	case '(':
 		TokenizerAddToken(TokenLeftRoundBracket, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case ')':
 		TokenizerAddToken(TokenRightRoundBracket, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '[':
 		TokenizerAddToken(TokenLeftSquareBracket, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case ']':
 		TokenizerAddToken(TokenRightSquareBracket, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '<':
 		if (TokenizerMatch('=')) {
 			TokenizerAddToken(TokenLessEqual, nullptr, 0, nullptr);
@@ -236,7 +236,7 @@ Token* TokenizerNextToken()
 		} else {
 			TokenizerAddToken(TokenLess, nullptr, 0, nullptr);
 		}
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '>':
 		if (TokenizerMatch('=')) {
 			TokenizerAddToken(TokenGreaterEqual, nullptr, 0, nullptr);
@@ -245,51 +245,51 @@ Token* TokenizerNextToken()
 		} else {
 			TokenizerAddToken(TokenGreater, nullptr, 0, nullptr);
 		}
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '{':
 		TokenizerAddToken(TokenLeftCurlyBracket, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '}':
 		TokenizerAddToken(TokenRightCurlyBracket, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case ',':
 		TokenizerAddToken(TokenComma, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '+':
 		TokenizerAddToken(TokenAdd, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '-':
 		TokenizerAddToken(TokenSubtract, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '*':
 		TokenizerAddToken(TokenMultiply, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '/':
 		TokenizerAddToken(TokenDivide, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '^':
 		TokenizerAddToken(TokenToPower, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '\'':
 		TokenizerAddToken(TokenTranspose, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case ':':
 		TokenizerAddToken(TokenColon, nullptr, 0, nullptr);
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '=':
 		if (TokenizerMatch('=')) {
 			TokenizerAddToken(TokenEqualEqual, nullptr, 0, nullptr);
 		} else {
 			TokenizerAddToken(TokenEqual, nullptr, 0, nullptr);
 		}
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	case '!':
 		if (TokenizerMatch('=')) {
 			TokenizerAddToken(TokenNotEqual, nullptr, 0, nullptr);
 		} else {
 			TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
 		}
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	default:
 		if (isdigit(c)) {
 			while (isdigit(TokenizerPeek(0))) {
@@ -299,14 +299,14 @@ Token* TokenizerNextToken()
 			if (TokenizerMatch('x')) {
 				if (!isdigit(TokenizerPeek(0))) {
 					TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
-					return &g_tokenizer.LastReturnedToken;
+					return &g_tokenizer.LookaheadToken;
 				}
 
 				TokenizerSkipDigit();
 
 				if (isalpha(TokenizerPeek(0))) {
 					TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
-					return &g_tokenizer.LastReturnedToken;
+					return &g_tokenizer.LookaheadToken;
 				}
 
 				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
@@ -315,26 +315,26 @@ Token* TokenizerNextToken()
 			} else if (TokenizerMatch('.')) {
 				if (!isdigit(TokenizerPeek(0))) {
 					TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
-					return &g_tokenizer.LastReturnedToken;
+					return &g_tokenizer.LookaheadToken;
 				}
 
 				TokenizerSkipDigit();
 
 				if (isalpha(TokenizerPeek(0))) {
 					TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
-					return &g_tokenizer.LastReturnedToken;
+					return &g_tokenizer.LookaheadToken;
 				}
 
 				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
 				TokenizerAddToken(TokenNumber, nullptr, ParseDouble(g_tokenizer.LexemeStart, lexemeLength), nullptr);
 			} else if (isalpha(TokenizerPeek(0))) {
 				TokenizerAddToken((TokenType)TokenizerPeek(0), nullptr, 0, nullptr);
-				return &g_tokenizer.LastReturnedToken;
+				return &g_tokenizer.LookaheadToken;
 			} else {
 				usz lexemeLength = (usz)(g_tokenizer.LexemeCurrent - g_tokenizer.LexemeStart);
 				TokenizerAddToken(TokenNumber, nullptr, ParseDouble(g_tokenizer.LexemeStart, lexemeLength), nullptr);
 			}
-			return &g_tokenizer.LastReturnedToken;
+			return &g_tokenizer.LookaheadToken;
 		} else if (isalpha(c)) {
 			TokenizerSkipAlphanumeric();
 
@@ -363,7 +363,7 @@ Token* TokenizerNextToken()
 			TokenizerAddToken((TokenType)c, nullptr, 0, nullptr);
 		}
 
-		return &g_tokenizer.LastReturnedToken;
+		return &g_tokenizer.LookaheadToken;
 	}
 }
 
