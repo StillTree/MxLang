@@ -31,7 +31,7 @@ void InterpreterInit()
 Mx* InterpreterAllocMx(usz height, usz width)
 {
 	Mx* mx;
-	DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_interpreter.MxArena, (void**)&mx, sizeof(Mx) + (height * width * sizeof(double))));
+	DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_interpreter.MxArena, (void**)&mx, sizeof(Mx) + (height * width * sizeof(f64))));
 
 	mx->Shape.Height = height;
 	mx->Shape.Width = width;
@@ -286,64 +286,88 @@ Mx* InterpreterEval(ASTNode* node)
 		return nullptr;
 	}
 	case ASTNodeFunctionCall: {
-		if (node->FunctionCall.Identifier.SymbolLength == 7 && memcmp(node->FunctionCall.Identifier.Symbol, "display", 7) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 7 && memcmp(node->FnCall.Identifier.Symbol, "display", 7) == 0) {
 			return FuncInterpretDisplay(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "fill", 4) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "fill", 4) == 0) {
 			return FuncInterpretFill(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "ident", 5) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 5 && memcmp(node->FnCall.Identifier.Symbol, "ident", 5) == 0) {
 			return FuncInterpretIdent(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "log", 3) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "log", 3) == 0) {
 			return FuncInterpretLog(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 2 && memcmp(node->FunctionCall.Identifier.Symbol, "ln", 2) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 2 && memcmp(node->FnCall.Identifier.Symbol, "ln", 2) == 0) {
 			return FuncInterpretLn(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "sqrt", 4) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "sqrt", 4) == 0) {
 			return FuncInterpretSqrt(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "abs", 3) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "abs", 3) == 0) {
 			return FuncInterpretAbs(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "ceil", 4) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "ceil", 4) == 0) {
 			return FuncInterpretCeil(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "floor", 5) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 5 && memcmp(node->FnCall.Identifier.Symbol, "floor", 5) == 0) {
 			return FuncInterpretFloor(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "sin", 3) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "sin", 3) == 0) {
 			return FuncInterpretSin(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "cos", 3) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "cos", 3) == 0) {
 			return FuncInterpretCos(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "tan", 3) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "tan", 3) == 0) {
 			return FuncInterpretTan(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "cot", 3) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "cot", 3) == 0) {
 			return FuncInterpretCot(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "rand", 4) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "rand", 4) == 0) {
 			return FuncInterpretRand(node);
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "input", 5) == 0) {
+		if (node->FnCall.Identifier.SymbolLength == 5 && memcmp(node->FnCall.Identifier.Symbol, "input", 5) == 0) {
 			return FuncInterpretInput(node);
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 7 && memcmp(node->FnCall.Identifier.Symbol, "reshape", 7) == 0) {
+			return FuncInterpretReshape(node);
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "diag", 4) == 0) {
+			return FuncInterpretDiag(node);
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "pow", 3) == 0) {
+			return FuncInterpretPow(node);
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "det", 3) == 0) {
+			return FuncInterpretDet(node);
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "inv", 3) == 0) {
+			return FuncInterpretInv(node);
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "rank", 4) == 0) {
+			return FuncInterpretRank(node);
 		}
 
 		return nullptr;

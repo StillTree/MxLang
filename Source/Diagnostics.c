@@ -6,7 +6,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
 DiagState g_diagState = { 0 };
 
@@ -44,7 +43,10 @@ static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelErro
 	[DiagIndexNotInteger] = { DiagLevelError, "Index %0 is not an integer" },
 	[DiagTooManyFunctionCallArgs] = { DiagLevelError, "Too many arguments in function call %0" },
 	[DiagTooLittleFunctionCallArgs] = { DiagLevelError, "Too little arguments in function call %0" },
-	[DiagFunctionCallArgMustBeCompTime] = { DiagLevelError, "Function call argument here must be a compile-time 1x1 matrix literal" },
+	[DiagFnCallArgMustBeCompTime] = { DiagLevelError, "Function call argument here must be a compile-time 1x1 matrix literal" },
+	[DiagFnCallArgMustBeVec] = { DiagLevelError, "Function call argument here must be a vector" },
+	[DiagFnCallArgMustBeSquare] = { DiagLevelError, "Function call argument here must be square" },
+	[DiagFnCallArgsMustBeEqualShape] = { DiagLevelError, "Function call arguments here must have identical shapes" },
 	[DiagNotInteger] = { DiagLevelError, "Number must be an integer" },
 	[DiagUndeclaredFunction] = { DiagLevelError, "Call to undeclared function %0" },
 	[DiagLogInvalidBase] = { DiagLevelError, "Logarithm base %0 must be greater than 0 and not equal to 1" },
@@ -55,6 +57,7 @@ static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelErro
 	[DiagInputInternalErr] = { DiagLevelError, "An internal error occured while trying to read stdin" },
 	[DiagInvalidInput] = { DiagLevelError, "Input return type must be a valid matrix" },
 	[DiagInvalidMxShape] = { DiagLevelError, "Invalid matrix shape" },
+	[DiagMatrixIsSingular] = { DiagLevelError, "Cannot compute inverse of singular matrix" },
 	[DiagUnusedExpressionResult] = { DiagLevelWarning, "Unused expression result" },
 	[DiagEmptyFileParsed] = { DiagLevelNote, "Empty file parsed" } };
 

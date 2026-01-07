@@ -81,8 +81,8 @@ static ASTNode* ParseIdentifierPrimary()
 
 		functionCall->Type = ASTNodeFunctionCall;
 		functionCall->Loc = loc;
-		functionCall->FunctionCall.Identifier = identifier;
-		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&functionCall->FunctionCall.CallArgs, 3 * sizeof(ASTNode*)));
+		functionCall->FnCall.Identifier = identifier;
+		DIAG_PANIC_ON_ERR(DynArenaAlloc(&g_parser.ArraysArena, (void**)&functionCall->FnCall.CallArgs, 3 * sizeof(ASTNode*)));
 
 		usz i = 0;
 		while (ParserPeek()->Type != TokenRightRoundBracket) {
@@ -95,12 +95,12 @@ static ASTNode* ParseIdentifierPrimary()
 			}
 
 			if (i > 2) {
-				DIAG_EMIT(DiagTooManyFunctionCallArgs, functionCall->Loc, DIAG_ARG_SYMBOL_VIEW(functionCall->FunctionCall.Identifier));
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, functionCall->Loc, DIAG_ARG_SYMBOL_VIEW(functionCall->FnCall.Identifier));
 				ParserSynchronize();
 				return nullptr;
 			}
 
-			functionCall->FunctionCall.CallArgs[i] = ParseExpression();
+			functionCall->FnCall.CallArgs[i] = ParseExpression();
 			++i;
 		}
 
@@ -109,7 +109,7 @@ static ASTNode* ParseIdentifierPrimary()
 			ParserSynchronize();
 			return nullptr;
 		}
-		functionCall->FunctionCall.ArgCount = i;
+		functionCall->FnCall.ArgCount = i;
 
 		return functionCall;
 	}
@@ -957,10 +957,10 @@ void ParserPrintAST(const ASTNode* node, usz indents)
 		printf(")");
 		break;
 	case ASTNodeFunctionCall:
-		printf("(call %.*s", (i32)node->FunctionCall.Identifier.SymbolLength, node->FunctionCall.Identifier.Symbol);
-		for (size_t i = 0; i < node->FunctionCall.ArgCount; ++i) {
+		printf("(call %.*s", (i32)node->FnCall.Identifier.SymbolLength, node->FnCall.Identifier.Symbol);
+		for (size_t i = 0; i < node->FnCall.ArgCount; ++i) {
 			printf(" (arg ");
-			ParserPrintAST(node->FunctionCall.CallArgs[i], 0);
+			ParserPrintAST(node->FnCall.CallArgs[i], 0);
 			printf(")");
 		}
 		printf(")");

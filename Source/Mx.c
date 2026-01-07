@@ -10,7 +10,7 @@ bool IsF64Int(f64 num)
 	if (!isfinite(num))
 		return false;
 
-	if (num < (double)INT64_MIN || num > (double)INT64_MAX)
+	if (num < (f64)INT64_MIN || num > (f64)INT64_MAX)
 		return false;
 
 	return trunc(num) == num;

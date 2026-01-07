@@ -50,7 +50,7 @@ typedef struct Token {
 	TokenType Type;
 	union {
 		SymbolView Lexeme;
-		double Number;
+		f64 Number;
 		MxShape MatrixShape;
 	};
 	SourceLoc Loc;

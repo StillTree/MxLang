@@ -28,7 +28,7 @@ typedef struct ASTNode {
 	SourceLoc Loc;
 
 	union {
-		double Number;
+		f64 Number;
 
 		struct {
 			struct ASTNode** Matrix;
@@ -97,7 +97,7 @@ typedef struct ASTNode {
 			SymbolView Identifier;
 			struct ASTNode** CallArgs;
 			usz ArgCount;
-		} FunctionCall;
+		} FnCall;
 	};
 } ASTNode;
 

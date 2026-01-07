@@ -138,8 +138,8 @@ static void SymbolBind(ASTNode* node)
 		break;
 	}
 	case ASTNodeFunctionCall: {
-		for (usz i = 0; i < node->FunctionCall.ArgCount; ++i) {
-			SymbolBind(node->FunctionCall.CallArgs[i]);
+		for (usz i = 0; i < node->FnCall.ArgCount; ++i) {
+			SymbolBind(node->FnCall.CallArgs[i]);
 		}
 
 		break;
@@ -172,7 +172,7 @@ Result TypeCheckCompTimeInteger(ASTNode* node, usz* num)
 {
 	if (node->Type != ASTNodeMxLiteral || node->MxLiteral.Shape.Height != 1 || node->MxLiteral.Shape.Width != 1
 		|| node->MxLiteral.Matrix[0]->Type != ASTNodeNumber) {
-		DIAG_EMIT0(DiagFunctionCallArgMustBeCompTime, node->Loc);
+		DIAG_EMIT0(DiagFnCallArgMustBeCompTime, node->Loc);
 		return ResInvalidToken;
 	}
 
@@ -508,12 +508,12 @@ MxShape* TypeCheck(ASTNode* node)
 		return nullptr;
 	}
 	case ASTNodeFunctionCall: {
-		if (node->FunctionCall.Identifier.SymbolLength == 7 && memcmp(node->FunctionCall.Identifier.Symbol, "display", 7) == 0) {
-			for (usz i = 0; i < node->FunctionCall.ArgCount; ++i) {
-				MxShape* argShape = TypeCheck(node->FunctionCall.CallArgs[i]);
+		if (node->FnCall.Identifier.SymbolLength == 7 && memcmp(node->FnCall.Identifier.Symbol, "display", 7) == 0) {
+			for (usz i = 0; i < node->FnCall.ArgCount; ++i) {
+				MxShape* argShape = TypeCheck(node->FnCall.CallArgs[i]);
 				if (!argShape) {
-					if (node->FunctionCall.CallArgs[i]) {
-						DIAG_EMIT0(DiagExprDoesNotReturnValue, node->FunctionCall.CallArgs[i]->Loc);
+					if (node->FnCall.CallArgs[i]) {
+						DIAG_EMIT0(DiagExprDoesNotReturnValue, node->FnCall.CallArgs[i]->Loc);
 					}
 
 					return nullptr;
@@ -523,19 +523,19 @@ MxShape* TypeCheck(ASTNode* node)
 			return nullptr;
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "ident", 5) == 0) {
-			if (node->FunctionCall.ArgCount < 1) {
-				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+		if (node->FnCall.Identifier.SymbolLength == 5 && memcmp(node->FnCall.Identifier.Symbol, "ident", 5) == 0) {
+			if (node->FnCall.ArgCount < 1) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 				return nullptr;
 			}
 
-			if (node->FunctionCall.ArgCount > 1) {
-				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+			if (node->FnCall.ArgCount > 1) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 				return nullptr;
 			}
 
 			usz size;
-			Result result = TypeCheckCompTimeInteger(node->FunctionCall.CallArgs[0], &size);
+			Result result = TypeCheckCompTimeInteger(node->FnCall.CallArgs[0], &size);
 			if (result) {
 				return nullptr;
 			}
@@ -548,32 +548,189 @@ MxShape* TypeCheck(ASTNode* node)
 			return shape;
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "fill", 4) == 0) {
-			if (node->FunctionCall.ArgCount < 3) {
-				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+		if (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "diag", 4) == 0) {
+			if (node->FnCall.ArgCount < 1) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 				return nullptr;
 			}
 
-			if (node->FunctionCall.ArgCount > 3) {
-				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+			if (node->FnCall.ArgCount > 1) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 				return nullptr;
 			}
+
+			MxShape* arg = TypeCheck(node->FnCall.CallArgs[0]);
+			if (arg->Width != 1) {
+				DIAG_EMIT0(DiagFnCallArgMustBeVec, node->FnCall.CallArgs[0]->Loc);
+				return nullptr;
+			}
+
+			MxShape* shape;
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
+
+			shape->Height = arg->Height;
+			shape->Width = arg->Height;
+			return shape;
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "rank", 4) == 0) {
+			if (node->FnCall.ArgCount < 1) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			if (node->FnCall.ArgCount > 1) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			TypeCheck(node->FnCall.CallArgs[0]);
+
+			MxShape* shape;
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
+
+			shape->Height = 1;
+			shape->Width = 1;
+			return shape;
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "inv", 3) == 0) {
+			if (node->FnCall.ArgCount < 1) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			if (node->FnCall.ArgCount > 1) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			MxShape* arg = TypeCheck(node->FnCall.CallArgs[0]);
+
+			if (arg->Height != arg->Width) {
+				DIAG_EMIT0(DiagFnCallArgMustBeSquare, node->FnCall.CallArgs[0]->Loc);
+				return nullptr;
+			}
+
+			MxShape* shape;
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
+
+			shape->Height = arg->Height;
+			shape->Width = arg->Height;
+			return shape;
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "det", 3) == 0) {
+			if (node->FnCall.ArgCount < 1) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			if (node->FnCall.ArgCount > 1) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			MxShape* arg = TypeCheck(node->FnCall.CallArgs[0]);
+
+			if (arg->Height != arg->Width) {
+				DIAG_EMIT0(DiagFnCallArgMustBeSquare, node->FnCall.CallArgs[0]->Loc);
+				return nullptr;
+			}
+
+			MxShape* shape;
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
+
+			shape->Height = 1;
+			shape->Width = 1;
+			return shape;
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "pow", 3) == 0) {
+			if (node->FnCall.ArgCount < 2) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			if (node->FnCall.ArgCount > 2) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			MxShape* arg1 = TypeCheck(node->FnCall.CallArgs[0]);
+			MxShape* arg2 = TypeCheck(node->FnCall.CallArgs[1]);
+
+			if (arg1->Height != arg2->Height || arg1->Width != arg2->Width) {
+				DIAG_EMIT0(DiagFnCallArgsMustBeEqualShape, node->Loc);
+				return nullptr;
+			}
+
+			MxShape* shape;
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
+
+			*shape = *arg1;
+			return shape;
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 7 && memcmp(node->FnCall.Identifier.Symbol, "reshape", 7) == 0) {
+			if (node->FnCall.ArgCount < 3) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			if (node->FnCall.ArgCount > 3) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			TypeCheck(node->FnCall.CallArgs[0]);
 
 			usz height;
-			Result result = TypeCheckCompTimeInteger(node->FunctionCall.CallArgs[0], &height);
+			Result result = TypeCheckCompTimeInteger(node->FnCall.CallArgs[1], &height);
 			if (result) {
 				return nullptr;
 			}
 
 			usz width;
-			result = TypeCheckCompTimeInteger(node->FunctionCall.CallArgs[1], &width);
+			result = TypeCheckCompTimeInteger(node->FnCall.CallArgs[2], &width);
 			if (result) {
 				return nullptr;
 			}
 
-			MxShape* fillShape = TypeCheck(node->FunctionCall.CallArgs[2]);
+			MxShape* shape;
+			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
+
+			shape->Height = height;
+			shape->Width = width;
+			return shape;
+		}
+
+		if (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "fill", 4) == 0) {
+			if (node->FnCall.ArgCount < 3) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			if (node->FnCall.ArgCount > 3) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
+				return nullptr;
+			}
+
+			usz height;
+			Result result = TypeCheckCompTimeInteger(node->FnCall.CallArgs[0], &height);
+			if (result) {
+				return nullptr;
+			}
+
+			usz width;
+			result = TypeCheckCompTimeInteger(node->FnCall.CallArgs[1], &width);
+			if (result) {
+				return nullptr;
+			}
+
+			MxShape* fillShape = TypeCheck(node->FnCall.CallArgs[2]);
 			if (fillShape->Height != 1 || fillShape->Width != 1) {
-				DIAG_EMIT0(DiagMxLiteralOnly1x1, node->FunctionCall.CallArgs[2]->Loc);
+				DIAG_EMIT0(DiagMxLiteralOnly1x1, node->FnCall.CallArgs[2]->Loc);
 				return nullptr;
 			}
 
@@ -585,26 +742,26 @@ MxShape* TypeCheck(ASTNode* node)
 			return shape;
 		}
 
-		if ((node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "rand", 4) == 0)
-			|| (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "input", 5) == 0)) {
-			if (node->FunctionCall.ArgCount < 2) {
-				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+		if ((node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "rand", 4) == 0)
+			|| (node->FnCall.Identifier.SymbolLength == 5 && memcmp(node->FnCall.Identifier.Symbol, "input", 5) == 0)) {
+			if (node->FnCall.ArgCount < 2) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 				return nullptr;
 			}
 
-			if (node->FunctionCall.ArgCount > 2) {
-				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+			if (node->FnCall.ArgCount > 2) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 				return nullptr;
 			}
 
 			usz height;
-			Result result = TypeCheckCompTimeInteger(node->FunctionCall.CallArgs[0], &height);
+			Result result = TypeCheckCompTimeInteger(node->FnCall.CallArgs[0], &height);
 			if (result) {
 				return nullptr;
 			}
 
 			usz width;
-			result = TypeCheckCompTimeInteger(node->FunctionCall.CallArgs[1], &width);
+			result = TypeCheckCompTimeInteger(node->FnCall.CallArgs[1], &width);
 			if (result) {
 				return nullptr;
 			}
@@ -617,26 +774,26 @@ MxShape* TypeCheck(ASTNode* node)
 			return shape;
 		}
 
-		if ((node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "sin", 3) == 0)
-			|| (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "cos", 3) == 0)
-			|| (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "tan", 3) == 0)
-			|| (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "cot", 3) == 0)
-			|| (node->FunctionCall.Identifier.SymbolLength == 2 && memcmp(node->FunctionCall.Identifier.Symbol, "ln", 2) == 0)
-			|| (node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "sqrt", 4) == 0)
-			|| (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "abs", 3) == 0)
-			|| (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "floor", 5) == 0)
-			|| (node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "ceil", 4) == 0)) {
-			if (node->FunctionCall.ArgCount < 1) {
-				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+		if ((node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "sin", 3) == 0)
+			|| (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "cos", 3) == 0)
+			|| (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "tan", 3) == 0)
+			|| (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "cot", 3) == 0)
+			|| (node->FnCall.Identifier.SymbolLength == 2 && memcmp(node->FnCall.Identifier.Symbol, "ln", 2) == 0)
+			|| (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "sqrt", 4) == 0)
+			|| (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "abs", 3) == 0)
+			|| (node->FnCall.Identifier.SymbolLength == 5 && memcmp(node->FnCall.Identifier.Symbol, "floor", 5) == 0)
+			|| (node->FnCall.Identifier.SymbolLength == 4 && memcmp(node->FnCall.Identifier.Symbol, "ceil", 4) == 0)) {
+			if (node->FnCall.ArgCount < 1) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 				return nullptr;
 			}
 
-			if (node->FunctionCall.ArgCount > 1) {
-				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+			if (node->FnCall.ArgCount > 1) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 				return nullptr;
 			}
 
-			MxShape* argShape = TypeCheck(node->FunctionCall.CallArgs[0]);
+			MxShape* argShape = TypeCheck(node->FnCall.CallArgs[0]);
 
 			MxShape* shape;
 			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
@@ -646,24 +803,24 @@ MxShape* TypeCheck(ASTNode* node)
 			return shape;
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 3 && memcmp(node->FunctionCall.Identifier.Symbol, "log", 3) == 0) {
-			if (node->FunctionCall.ArgCount < 2) {
-				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+		if (node->FnCall.Identifier.SymbolLength == 3 && memcmp(node->FnCall.Identifier.Symbol, "log", 3) == 0) {
+			if (node->FnCall.ArgCount < 2) {
+				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 				return nullptr;
 			}
 
-			if (node->FunctionCall.ArgCount > 2) {
-				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+			if (node->FnCall.ArgCount > 2) {
+				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 				return nullptr;
 			}
 
-			MxShape* baseShape = TypeCheck(node->FunctionCall.CallArgs[0]);
+			MxShape* baseShape = TypeCheck(node->FnCall.CallArgs[0]);
 			if (baseShape->Height != 1 || baseShape->Width != 1) {
-				DIAG_EMIT0(DiagMxLiteralOnly1x1, node->FunctionCall.CallArgs[0]->Loc);
+				DIAG_EMIT0(DiagMxLiteralOnly1x1, node->FnCall.CallArgs[0]->Loc);
 				return nullptr;
 			}
 
-			MxShape* argShape = TypeCheck(node->FunctionCall.CallArgs[1]);
+			MxShape* argShape = TypeCheck(node->FnCall.CallArgs[1]);
 
 			MxShape* shape;
 			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
@@ -673,7 +830,7 @@ MxShape* TypeCheck(ASTNode* node)
 			return shape;
 		}
 
-		DIAG_EMIT(DiagUndeclaredFunction, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
+		DIAG_EMIT(DiagUndeclaredFunction, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FnCall.Identifier));
 		return nullptr;
 	}
 	case ASTNodeIdentifier: {

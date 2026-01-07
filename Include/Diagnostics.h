@@ -32,7 +32,10 @@ typedef enum DiagType {
 	DiagIndexNotInteger,
 	DiagTooManyFunctionCallArgs,
 	DiagTooLittleFunctionCallArgs,
-	DiagFunctionCallArgMustBeCompTime,
+	DiagFnCallArgMustBeCompTime,
+	DiagFnCallArgMustBeVec,
+	DiagFnCallArgMustBeSquare,
+	DiagFnCallArgsMustBeEqualShape,
 	DiagNotInteger,
 	DiagUndeclaredFunction,
 	DiagLogInvalidBase,
@@ -43,6 +46,7 @@ typedef enum DiagType {
 	DiagInputInternalErr,
 	DiagInvalidInput,
 	DiagInvalidMxShape,
+	DiagMatrixIsSingular,
 	DiagUnusedExpressionResult,
 	DiagEmptyFileParsed
 } DiagType;
@@ -65,7 +69,7 @@ typedef struct DiagArg {
 		TokenType TokenType;
 		SymbolView SymbolView;
 		MxShape MxShape;
-		double Number;
+		f64 Number;
 		Result Result;
 	};
 } DiagArg;
@@ -91,9 +95,9 @@ extern DiagState g_diagState;
 
 #define DIAG_PANIC_ON_ERR(x)                                                                                                               \
 	do {                                                                                                                                   \
-		Result r = (x);                                                                                                               \
-		if (r) {                                                                                                                      \
-			DiagPanic(r, __FILE_NAME__, __LINE__);                                                                                    \
+		Result r = (x);                                                                                                                    \
+		if (r) {                                                                                                                           \
+			DiagPanic(r, __FILE_NAME__, __LINE__);                                                                                         \
 		}                                                                                                                                  \
 	} while (false)
 
