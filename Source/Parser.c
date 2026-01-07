@@ -678,6 +678,12 @@ static ASTNode* ParseVarDecl()
 			return nullptr;
 		}
 
+		if (token->MatrixShape.Height < 1 || token->MatrixShape.Width < 1) {
+			DIAG_EMIT0(DiagInvalidMxShape, token->Loc);
+			ParserSynchronize();
+			return nullptr;
+		}
+
 		varDecl->VarDecl.Shape = token->MatrixShape;
 		varDecl->VarDecl.HasDeclaredShape = true;
 	}
@@ -793,6 +799,10 @@ void ParserParse()
 		}
 
 		++count;
+	}
+
+	if (count < 1) {
+		return;
 	}
 
 	DIAG_PANIC_ON_ERR(DynArenaAllocZeroed(&g_parser.ArraysArena, (void**)&topLevelBlock->Block.Nodes, count * sizeof(ASTNode*)));

@@ -50,7 +50,7 @@ static Result BindingInsert(BindingScope* scope, const char* name, usz* id)
 {
 	for (usz i = 0; i < scope->EntryCount; ++i) {
 		if (scope->Entries[i].InternedName == name) {
-			return ResErr;
+			return ResInvalidParams;
 		}
 	}
 
@@ -173,12 +173,17 @@ Result TypeCheckCompTimeInteger(ASTNode* node, usz* num)
 	if (node->Type != ASTNodeMxLiteral || node->MxLiteral.Shape.Height != 1 || node->MxLiteral.Shape.Width != 1
 		|| node->MxLiteral.Matrix[0]->Type != ASTNodeNumber) {
 		DIAG_EMIT0(DiagFunctionCallArgMustBeCompTime, node->Loc);
-		return ResErr;
+		return ResInvalidToken;
 	}
 
 	if (!IsF64Int(node->MxLiteral.Matrix[0]->Number)) {
-		DIAG_EMIT(DiagNotInteger, node->FunctionCall.CallArgs[0]->Loc, DIAG_ARG_NUMBER(node->MxLiteral.Matrix[0]->Number));
-		return ResErr;
+		DIAG_EMIT0(DiagNotInteger, node->Loc);
+		return ResInvalidToken;
+	}
+
+	if (node->MxLiteral.Matrix[0]->Number < 1) {
+		DIAG_EMIT0(DiagInvalidInput, node->Loc);
+		return ResInvalidToken;
 	}
 
 	*num = (usz)node->MxLiteral.Matrix[0]->Number;
@@ -580,7 +585,8 @@ MxShape* TypeCheck(ASTNode* node)
 			return shape;
 		}
 
-		if (node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "rand", 4) == 0) {
+		if ((node->FunctionCall.Identifier.SymbolLength == 4 && memcmp(node->FunctionCall.Identifier.Symbol, "rand", 4) == 0)
+			|| (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "input", 5) == 0)) {
 			if (node->FunctionCall.ArgCount < 2) {
 				DIAG_EMIT(DiagTooLittleFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
 				return nullptr;
@@ -608,20 +614,6 @@ MxShape* TypeCheck(ASTNode* node)
 
 			shape->Height = height;
 			shape->Width = width;
-			return shape;
-		}
-
-		if (node->FunctionCall.Identifier.SymbolLength == 5 && memcmp(node->FunctionCall.Identifier.Symbol, "input", 5) == 0) {
-			if (node->FunctionCall.ArgCount > 0) {
-				DIAG_EMIT(DiagTooManyFunctionCallArgs, node->Loc, DIAG_ARG_SYMBOL_VIEW(node->FunctionCall.Identifier));
-				return nullptr;
-			}
-
-			MxShape* shape;
-			DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_typeChecker.ShapeArena, (void**)&shape));
-
-			shape->Height = 1;
-			shape->Width = 1;
 			return shape;
 		}
 
@@ -729,7 +721,7 @@ void TypeCheckerInit()
 
 	g_typeChecker.TypeCheckingTable = calloc(128, sizeof(MxShape));
 	if (!g_typeChecker.TypeCheckingTable) {
-		DIAG_PANIC_ON_ERR(ResErr);
+		DIAG_PANIC_ON_ERR(ResOutOfMemory);
 	}
 
 	DIAG_PANIC_ON_ERR(StatArenaInit(&g_typeChecker.ShapeArena, sizeof(MxShape)));

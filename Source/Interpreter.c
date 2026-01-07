@@ -13,7 +13,7 @@ void InterpreterInit()
 {
 	g_interpreter.VarTable = (Mx**)calloc(128, sizeof(Mx*));
 	if (!g_interpreter.VarTable) {
-		DIAG_PANIC_ON_ERR(ResErr);
+		DIAG_PANIC_ON_ERR(ResOutOfMemory);
 	}
 
 	DIAG_PANIC_ON_ERR(DynArenaInit(&g_interpreter.MxArena));
@@ -72,7 +72,8 @@ Mx* InterpreterEval(ASTNode* node)
 			return mx;
 		}
 		default:
-			DIAG_PANIC_ON_ERR(ResErr);
+			DIAG_PANIC_ON_ERR(ResInvalidToken);
+			return nullptr;
 		}
 	}
 	case ASTNodeGrouping:
@@ -186,7 +187,8 @@ Mx* InterpreterEval(ASTNode* node)
 			return mx;
 		}
 		default:
-			DIAG_PANIC_ON_ERR(ResErr);
+			DIAG_PANIC_ON_ERR(ResInvalidToken);
+			return nullptr;
 		}
 	}
 	case ASTNodeBlock: {

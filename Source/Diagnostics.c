@@ -45,15 +45,16 @@ static const DiagInfo DIAG_TYPE_INFO[] = { [DiagExpectedToken] = { DiagLevelErro
 	[DiagTooManyFunctionCallArgs] = { DiagLevelError, "Too many arguments in function call %0" },
 	[DiagTooLittleFunctionCallArgs] = { DiagLevelError, "Too little arguments in function call %0" },
 	[DiagFunctionCallArgMustBeCompTime] = { DiagLevelError, "Function call argument here must be a compile-time 1x1 matrix literal" },
-	[DiagNotInteger] = { DiagLevelError, "Number %0 must be an integer" },
+	[DiagNotInteger] = { DiagLevelError, "Number must be an integer" },
 	[DiagUndeclaredFunction] = { DiagLevelError, "Call to undeclared function %0" },
 	[DiagLogInvalidBase] = { DiagLevelError, "Logarithm base %0 must be greater than 0 and not equal to 1" },
 	[DiagLogInvalidArg] = { DiagLevelError, "Logarithm argument %0 must be greater than 0" },
 	[DiagSqrtInvalidArg] = { DiagLevelError, "Square root argument %0 must be greater than or equal to 0" },
 	[DiagDivisionByZero] = { DiagLevelError, "Division by 0" },
 	[DiagPoweringToNonInt] = { DiagLevelError, "A matrix can only be raised to a power of a positive integer. Here: %0" },
-	[DiagInputTooBig] = { DiagLevelError, "Input can only be 254 characters long" },
-	[DiagInvalidInput] = { DiagLevelError, "Input can only handle numbers" },
+	[DiagInputInternalErr] = { DiagLevelError, "An internal error occured while trying to read stdin" },
+	[DiagInvalidInput] = { DiagLevelError, "Input return type must be a valid matrix" },
+	[DiagInvalidMxShape] = { DiagLevelError, "Invalid matrix shape" },
 	[DiagUnusedExpressionResult] = { DiagLevelWarning, "Unused expression result" },
 	[DiagEmptyFileParsed] = { DiagLevelNote, "Empty file parsed" } };
 
@@ -89,9 +90,6 @@ static void PrintResult(Result result, FILE* out)
 		break;
 	case ResEndOfIteration:
 		fprintf(out, "ResEndOfIteration");
-		break;
-	case ResErr:
-		fprintf(out, "ResErr");
 		break;
 	default:
 		fprintf(out, "ResultUnknown");

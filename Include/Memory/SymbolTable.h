@@ -22,7 +22,6 @@ typedef struct SymbolTable {
 } SymbolTable;
 
 Result SymbolTableInit(SymbolTable* table);
-/// Returns `ResOk` when found and `ResErr` when not.
 Result SymbolTableContains(SymbolTable* table, const char* key, usz keyLength);
 Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, SymbolView* internedSymbol);
 Result SymbolTableDeinit(SymbolTable* table);

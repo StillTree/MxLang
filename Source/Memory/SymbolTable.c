@@ -66,7 +66,7 @@ Result SymbolTableInit(SymbolTable* table)
 
 	table->Entries = (SymbolTableEntry**)calloc(table->Capacity, sizeof(SymbolTableEntry*));
 	if (!table->Entries) {
-		return ResErr;
+		return ResOutOfMemory;
 	}
 
 	return ResOk;

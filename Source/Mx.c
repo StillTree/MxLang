@@ -18,6 +18,11 @@ bool IsF64Int(f64 num)
 
 void MxPrint(const Mx* mx)
 {
+	if (mx->Shape.Height == 1 && mx->Shape.Width == 1) {
+		printf("%lf", mx->Data[0]);
+		return;
+	}
+
 	for (usz i = 0; i < mx->Shape.Height; ++i) {
 		printf("[");
 
@@ -135,7 +140,7 @@ Result MxDivide(const Mx* left, const Mx* right, Mx* out)
 
 		for (usz i = 0; i < out->Shape.Height * out->Shape.Width; ++i) {
 			if (right->Data[i] == 0) {
-				return ResErr;
+				return ResInvalidOperand;
 			}
 
 			out->Data[i] = left->Data[0] / right->Data[i];
@@ -145,7 +150,7 @@ Result MxDivide(const Mx* left, const Mx* right, Mx* out)
 	}
 
 	if (right->Data[0] == 0) {
-		return ResErr;
+		return ResInvalidOperand;
 	}
 
 	out->Shape = left->Shape;
@@ -168,7 +173,7 @@ Result MxToPower(const Mx* left, const Mx* right, Mx* out)
 	}
 
 	if (right->Data[0] < 0 || !IsF64Int(right->Data[0])) {
-		return ResErr;
+		return ResInvalidOperand;
 	}
 
 	u64 power = (u64)right->Data[0];
