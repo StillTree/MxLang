@@ -17,3 +17,5 @@ typedef ptrdiff_t isz;
 
 typedef float f32;
 typedef double f64;
+
+static inline usz AlignUp(usz value, usz alignment) { return (value + alignment - 1) & ~(alignment - 1); }

@@ -122,7 +122,7 @@ Result SymbolTableAdd(SymbolTable* table, const char* key, usz keyLength, Symbol
 	}
 
 	SymbolTableEntry* newEntry;
-	Result result = DynArenaAlloc(&table->Arena, (void**)&newEntry, sizeof(SymbolTableEntry) + keyLength);
+	Result result = DynArenaAlloc(&table->Arena, (void**)&newEntry, AlignUp(sizeof(SymbolTableEntry) + keyLength, 8));
 	if (result) {
 		return result;
 	}
