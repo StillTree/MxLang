@@ -44,11 +44,14 @@ int main(int argc, char* argv[])
 
 	errCount += DiagReport();
 
-	TypeCheckerTypeCheck();
+	if (errCount <= 0) {
+		TypeCheckerTypeCheck();
 
-	errCount += DiagReport();
-
-	TypeCheckerDeinit();
+		errCount += DiagReport();
+	} else {
+		fprintf(stderr, "Error(s) emitted. Stopping now\n");
+		goto deinit;
+	}
 
 	if (errCount <= 0) {
 		InterpreterInit();
@@ -58,7 +61,11 @@ int main(int argc, char* argv[])
 		InterpreterDeinit();
 	} else {
 		fprintf(stderr, "Error(s) emitted. Stopping now\n");
+		goto deinit;
 	}
+
+deinit:
+	TypeCheckerDeinit();
 
 	ParserDeinit();
 

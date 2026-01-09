@@ -126,8 +126,7 @@ block        ::= "{" statement* "}"
 if_stmt      ::= "if" expression block ( "else" ( if_stmt | block ) )?
 while_stmt   ::= "while" expression block
 
-var_decl     ::= ( "let" | "const" ) IDENTIFIER type_decl? "=" expression
-type_decl    ::= ":" INTEGER "x" INTEGER
+var_decl     ::= ( "let" | "const" ) IDENTIFIER TYPE_DECL? "=" expression
 
 assignment   ::= IDENTIFIER index_suffix? "=" expression
 index_suffix ::= "[" expression ( expression )? "]"
@@ -142,8 +141,8 @@ equality     ::= comparison ( ( "==" | "!=" ) comparison )*
 comparison   ::= term ( ( "<" | "<=" | ">" | ">=" ) term )*
 term         ::= factor ( ( "+" | "-") factor )*
 factor       ::= exponent ( ( "*" | "/" ) exponent )*
-exponent     ::= unary ( "^" unary )*
-unary        ::= ( "-" unary ) | postfix
+unary        ::= ( "-" unary ) | exponent
+exponent     ::= postfix ( "^" postfix )*
 postfix      ::= primary ( "'" )?
 
 primary      ::= IDENTIFIER ( "(" call_args? ")" | index_suffix )? 
