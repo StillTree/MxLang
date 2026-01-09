@@ -43,6 +43,7 @@ typedef enum DiagType {
 	DiagSqrtInvalidArg,
 	DiagDivisionByZero,
 	DiagPoweringToNonInt,
+	DiagEvenRootOfNegative,
 	DiagInputInternalErr,
 	DiagInvalidInput,
 	DiagInvalidMxShape,

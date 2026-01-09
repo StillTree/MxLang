@@ -11,5 +11,6 @@ typedef enum Result : u8 {
 	ResInvalidParams,
 	ResEndOfIteration,
 	ResInvalidToken,
-	ResInvalidOperand
+	ResInvalidOperand,
+	ResMatrixPowerToNonInt
 } Result;

@@ -351,6 +351,30 @@ static ASTNode* ParsePostfix()
 	return primary;
 }
 
+static ASTNode* ParseExponent()
+{
+	ASTNode* left = ParsePostfix();
+
+	while (ParserPeek()->Type == TokenToPower) {
+		TokenType operator = ParserPeek()->Type;
+		ParserAdvance();
+
+		ASTNode* temp = left;
+
+		ASTNode* right = ParsePostfix();
+
+		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&left));
+
+		left->Type = ASTNodeBinary;
+		left->Loc = temp->Loc;
+		left->Binary.Left = temp;
+		left->Binary.Operator = operator;
+		left->Binary.Right = right;
+	}
+
+	return left;
+}
+
 static ASTNode* ParseUnary()
 {
 	if (ParserPeek()->Type == TokenSubtract) {
@@ -370,36 +394,12 @@ static ASTNode* ParseUnary()
 		return unary;
 	}
 
-	return ParsePostfix();
-}
-
-static ASTNode* ParseExponent()
-{
-	ASTNode* left = ParseUnary();
-
-	while (ParserPeek()->Type == TokenToPower) {
-		TokenType operator = ParserPeek()->Type;
-		ParserAdvance();
-
-		ASTNode* temp = left;
-
-		ASTNode* right = ParseUnary();
-
-		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&left));
-
-		left->Type = ASTNodeBinary;
-		left->Loc = temp->Loc;
-		left->Binary.Left = temp;
-		left->Binary.Operator = operator;
-		left->Binary.Right = right;
-	}
-
-	return left;
+	return ParseExponent();
 }
 
 static ASTNode* ParseFactor()
 {
-	ASTNode* left = ParseExponent();
+	ASTNode* left = ParseUnary();
 
 	while (ParserPeek()->Type == TokenMultiply || ParserPeek()->Type == TokenDivide) {
 		TokenType operator = ParserPeek()->Type;
@@ -407,7 +407,7 @@ static ASTNode* ParseFactor()
 
 		ASTNode* temp = left;
 
-		ASTNode* right = ParseExponent();
+		ASTNode* right = ParseUnary();
 
 		DIAG_PANIC_ON_ERR(StatArenaAlloc(&g_parser.ASTArena, (void**)&left));
 

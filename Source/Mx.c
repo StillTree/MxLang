@@ -173,7 +173,7 @@ Result MxToPower(const Mx* left, const Mx* right, Mx* out)
 	}
 
 	if (right->Data[0] < 0 || !IsF64Int(right->Data[0])) {
-		return ResInvalidOperand;
+		return ResMatrixPowerToNonInt;
 	}
 
 	u64 power = (u64)right->Data[0];
