@@ -245,7 +245,11 @@ Mx* FuncInterpretInput(ASTNode* functionCall)
 
 			fflush(stdout);
 			f64 num;
-			scanf("%lf", &num);
+			i32 result = scanf("%lf", &num);
+			if (result != 1) {
+				DIAG_EMIT0(DiagInvalidInput, functionCall->Loc);
+				InterpreterPanic();
+			}
 
 			mx->Data[(i * width) + j] = num;
 		}
