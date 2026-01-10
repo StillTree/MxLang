@@ -1,6 +1,23 @@
 # MxLang
 
-A matrix only language, for a uni project.
+A matrix only language, kind of similar to MATLAB but with **static type checking**.
+
+## Running
+
+Running these command should correctly build the interpreter binary with the default CMake toolchain.
+
+```sh
+git clone https://github.com/StillTree/MxLang
+cd MxLang
+mkdir Build
+cd Build
+cmake ..
+cmake --build .
+```
+
+> [!NOTE]  
+> This interpreter has been compiled with Clang and GCC, as well as tested on Linux and MacOS. Getting this up and running on Windows
+> using MSVC might require some tweaks.
 
 ## Examples
 
