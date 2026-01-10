@@ -4,7 +4,7 @@ A matrix only language, kind of similar to MATLAB but with **static type checkin
 
 ## Running
 
-Running these command should correctly build the interpreter binary with the default CMake toolchain.
+Running these commands should correctly build the interpreter binary with the default CMake toolchain.
 
 ```sh
 git clone https://github.com/StillTree/MxLang
