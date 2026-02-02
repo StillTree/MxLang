@@ -1,3 +1,9 @@
+/*
+MxLang - TypeChecker.c
+Autor: Alexander Dębowski (293472)
+Data: 07.01.2026
+*/
+
 #include "TypeChecker.h"
 
 #include "Diagnostics.h"
