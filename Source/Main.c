@@ -12,7 +12,7 @@ int main(int argc, char* argv[])
 {
 	srand((u32)time(0));
 
-	printf("MxLang v" MX_VERSION "\n\n");
+	printf("MxLang v" MX_VERSION "\nAuthor: Alexander Dębowski (293472)\n\n");
 
 	if (argc < 2) {
 		fprintf(stderr, "A 'fileName' argument is required\n");
