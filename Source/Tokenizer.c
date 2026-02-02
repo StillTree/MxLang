@@ -1,3 +1,9 @@
+/*
+MxLang - Tokenizer.c
+Autor: Alexander Dębowski (293472)
+Data: 28.12.2025
+*/
+
 #include "Tokenizer.h"
 
 #include "Diagnostics.h"
