@@ -1,3 +1,9 @@
+/*
+MxLang - Interpreter.h
+Autor: Alexander Dębowski (293472)
+Data: 28.12.2025
+*/
+
 #pragma once
 
 #include "Memory/DynArena.h"

@@ -1,3 +1,9 @@
+/*
+MxLang - Types.h
+Autor: Alexander Dębowski (293472)
+Data: 08.01.2026
+*/
+
 #pragma once
 
 #include <stddef.h>

@@ -1,3 +1,9 @@
+/*
+MxLang - Parser.c
+Autor: Alexander Dębowski (293472)
+Data: 09.01.2026
+*/
+
 #include "Parser.h"
 #include "Diagnostics.h"
 #include <stdio.h>

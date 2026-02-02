@@ -1,3 +1,9 @@
+/*
+MxLang - Mx.c
+Autor: Alexander Dębowski (293472)
+Data: 09.01.2026
+*/
+
 #include "Mx.h"
 #include "Interpreter.h"
 

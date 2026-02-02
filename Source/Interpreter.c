@@ -1,3 +1,9 @@
+/*
+MxLang - Interpreter.c
+Autor: Alexander Dębowski (293472)
+Data: 07.01.2026
+*/
+
 #include "Interpreter.h"
 
 #include "Diagnostics.h"

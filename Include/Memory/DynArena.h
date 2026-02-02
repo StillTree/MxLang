@@ -1,3 +1,9 @@
+/*
+MxLang - Memory/DynArena.h
+Autor: Alexander Dębowski (293472)
+Data: 24.12.2025
+*/
+
 #pragma once
 
 #include "Types.h"

@@ -1,3 +1,9 @@
+/*
+MxLang - Memory/StatArena.c
+Autor: Alexander Dębowski (293472)
+Data: 27.12.2025
+*/
+
 #include "Memory/StatArena.h"
 
 #include <stdio.h>

@@ -1,3 +1,9 @@
+/*
+MxLang - Mx.h
+Autor: Alexander Dębowski (293472)
+Data: 27.12.2025
+*/
+
 #pragma once
 
 #include "MxShape.h"

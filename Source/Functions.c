@@ -1,3 +1,9 @@
+/*
+MxLang - Functions.c
+Autor: Alexander Dębowski (293472)
+Data: 10.01.2026
+*/
+
 #include "Functions.h"
 
 #include "Diagnostics.h"

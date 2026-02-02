@@ -1,3 +1,7 @@
+# MxLang - CMakeLists.txt
+# Autor: Alexander Dębowski (293472)
+# Data: 27.12.2025
+
 cmake_minimum_required(VERSION 3.25)
 
 project(MxLang

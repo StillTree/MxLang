@@ -1,3 +1,9 @@
+/*
+MxLang - Tokenizer.h
+Autor: Alexander Dębowski (293472)
+Data: 07.01.2026
+*/
+
 #pragma once
 
 #include "Memory/SymbolTable.h"

@@ -1,3 +1,9 @@
+/*
+MxLang - Memory/SymbolTable.c
+Autor: Alexander Dębowski (293472)
+Data: 08.01.2026
+*/
+
 #include "Memory/SymbolTable.h"
 
 #include <stdlib.h>

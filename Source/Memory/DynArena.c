@@ -1,3 +1,9 @@
+/*
+MxLang - Memory/DynArena.c
+Autor: Alexander Dębowski (293472)
+Data: 19.12.2025
+*/
+
 #include "Memory/DynArena.h"
 
 #include <stdio.h>

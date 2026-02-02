@@ -1,3 +1,9 @@
+/*
+MxLang - Memory/StatArena.h
+Autor: Alexander Dębowski (293472)
+Data: 20.12.2025
+*/
+
 #pragma once
 
 #include "Types.h"

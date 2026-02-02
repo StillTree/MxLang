@@ -1,3 +1,9 @@
+/*
+MxLang - Main.c
+Autor: Alexander Dębowski (293472)
+Data: 02.02.2026
+*/
+
 #include "Diagnostics.h"
 #include "Interpreter.h"
 #include "Parser.h"
@@ -12,7 +18,7 @@ int main(int argc, char* argv[])
 {
 	srand((u32)time(0));
 
-	printf("MxLang v" MX_VERSION "\nAuthor: Alexander Dębowski (293472)\n\n");
+	printf("MxLang v" MX_VERSION "\nAutor: Alexander Dębowski (293472)\n\n");
 
 	if (argc < 2) {
 		fprintf(stderr, "A 'fileName' argument is required\n");
